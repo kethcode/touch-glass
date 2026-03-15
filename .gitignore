@@ -1,0 +1,11 @@
+*.db
+*.db-wal
+*.db-shm
+.env
+chrome-session/
+__pycache__/
+*.pyc
+.vercel/
+/tmp/
+*.log
+node_modules/
