@@ -177,10 +177,16 @@ def enrich_pending_links(batch_size: int = 20) -> dict:
                 meta["domain"], now, link_id
             ))
 
-            # Update FTS
+            # Update FTS (content= tables need special delete command)
             rowid = conn.execute("SELECT rowid FROM links WHERE id=?", (link_id,)).fetchone()
             if rowid:
-                conn.execute("DELETE FROM links_fts WHERE rowid=?", (rowid[0],))
+                try:
+                    conn.execute("""
+                        INSERT INTO links_fts(links_fts, rowid, title, description, content_excerpt, url, domain)
+                        VALUES('delete', ?, '', '', '', '', '')
+                    """, (rowid[0],))
+                except Exception:
+                    pass
                 conn.execute("""
                     INSERT INTO links_fts(rowid, title, description, content_excerpt, url, domain)
                     VALUES (?, ?, ?, ?, ?, ?)

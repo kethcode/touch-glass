@@ -94,6 +94,7 @@
     <span class="pill" data-source="bookmarks" onclick="setSource(this)">Bookmarks</span>
     <span class="pill" data-source="own" onclick="setSource(this)">Own</span>
     <span class="pill" data-source="linkedin_feed" onclick="setSource(this)">LinkedIn</span>
+    <span class="pill" data-source="telegram" onclick="setSource(this)">Telegram</span>
   </div>
 
   <div class="feed" id="feed"></div>
@@ -200,6 +201,23 @@ function renderItem(r) {
   const type = r.type || 'tweet';
   const src = r.source || type;
 
+  if (type === 'message') {
+    return `<div class="item">
+      <div class="top">
+        <span class="author">${esc(r.author||'?')}</span>
+        <div style="display:flex;gap:6px;align-items:center;">
+          ${r.created_at ? `<span style="color:var(--muted);font-size:11px;">${timeAgo(r.created_at)}</span>` : ''}
+          <span class="badge" style="background:rgba(0,150,136,0.12);color:#26a69a;">${esc(r.chat_name||'telegram')}</span>
+        </div>
+      </div>
+      <div class="text">${esc(r.text||'')}</div>
+      <div class="meta">
+        ${r.url ? `<a href="${r.url}" target="_blank">${r.url.slice(0,50)}</a>` : ''}
+        <span>telegram</span>
+      </div>
+    </div>`;
+  }
+
   if (type === 'contact') {
     return `<div class="item">
       <div class="top">
@@ -231,10 +249,14 @@ function renderItem(r) {
 
   // Tweet / post
   const authorUrl = r.platform === 'linkedin' ? '#' : `https://x.com/${esc(r.author_username||'')}`;
+  const ts = r.created_at || r.scraped_at;
   return `<div class="item">
     <div class="top">
-      <a class="author" href="${authorUrl}" target="_blank">@${esc(r.author_username||r.author_display_name||'?')}</a>
-      <span class="badge ${esc(src)}">${esc(src)}</span>
+      <a class="author" href="${authorUrl}" target="_blank">${r.author_username ? '@'+esc(r.author_username) : esc(r.author_display_name||'?')}</a>
+      <div style="display:flex;gap:6px;align-items:center;">
+        ${ts ? `<span style="color:var(--muted);font-size:11px;">${timeAgo(ts)}</span>` : ''}
+        <span class="badge ${esc(src)}">${esc(src)}</span>
+      </div>
     </div>
     <div class="text">${esc(r.text||'')}</div>
     <div class="meta">
@@ -242,7 +264,6 @@ function renderItem(r) {
       ${r.retweets ? `<span>&#8634; ${fmt(r.retweets)}</span>` : ''}
       ${r.views ? `<span>&#128065; ${fmt(r.views)}</span>` : ''}
       ${r.url ? `<a href="${r.url}" target="_blank">View</a>` : ''}
-      ${r.created_at ? `<span>${timeAgo(r.created_at)}</span>` : ''}
     </div>
   </div>`;
 }
@@ -251,12 +272,15 @@ function fmt(n) { if (!n) return '0'; n = parseInt(n); if (n >= 1e6) return (n/1
 function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function timeAgo(d) {
   if (!d) return '';
-  const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return d.slice(0,20); // Not a valid date, show raw
+  const s = Math.floor((Date.now() - dt.getTime()) / 1000);
+  if (s < 0) return 'now'; // future dates
   if (s < 60) return 'now';
   if (s < 3600) return Math.floor(s/60) + 'm';
   if (s < 86400) return Math.floor(s/3600) + 'h';
   if (s < 604800) return Math.floor(s/86400) + 'd';
-  return new Date(d).toLocaleDateString();
+  return dt.toLocaleDateString();
 }
 
 async function loadStats() {

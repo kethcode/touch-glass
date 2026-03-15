@@ -70,7 +70,12 @@ def _scrape_linkedin(url: str, source: str, pages: int) -> dict:
                 post["source"] = source
                 post["platform"] = "linkedin"
                 post["scraped_at"] = now
-                post["created_at"] = post.pop("timestamp", None)
+                raw_ts = post.pop("timestamp", None)
+                # Only keep created_at if it's an ISO-like timestamp
+                if raw_ts and raw_ts.startswith("202"):
+                    post["created_at"] = raw_ts
+                else:
+                    post["created_at"] = now  # Use scrape time as fallback
                 post["author_username"] = ""
                 dom_links = post.pop("links", [])
                 post["all_links"] = dom_links

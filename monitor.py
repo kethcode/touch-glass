@@ -68,6 +68,7 @@ def main():
     from scrapers.timeline import scrape_timeline, scrape_bookmarks, scrape_own_tweets
     from scrapers.followers import scrape_followers, scrape_following, detect_mutuals
     from scrapers.linkedin import scrape_linkedin_feed, scrape_linkedin_saved
+    from scrapers.telegram import scrape_telegram_groups
     from enrichment.links import enrich_pending_links
 
     # Optional: embeddings (requires openai)
@@ -132,6 +133,13 @@ def main():
         # LinkedIn saved: every 3rd cycle
         if cycle % 3 == 0:
             run_task("linkedin_saved", scrape_linkedin_saved, pages=5)
+            time.sleep(3)
+
+        # --- Telegram ---
+
+        # Telegram groups: every 3rd cycle (~30 min), all groups
+        if cycle % 3 == 0:
+            run_task("telegram_groups", scrape_telegram_groups, max_groups=200, scroll_pages=3)
             time.sleep(3)
 
         # --- Enrichment ---

@@ -99,15 +99,12 @@ def timeline(
     platform: str = Query(None),
     source: str = Query(None),
 ):
-    """Reverse-chron feed of all items: tweets, contacts, links."""
+    """Reverse-chron feed — returns full objects, sorted by created_at then scraped_at."""
     conn = get_db()
     items = []
 
-    # Tweets / posts
-    sql = """SELECT id, platform, author_username, author_display_name, text,
-                likes, retweets, replies, views, url, source, created_at, scraped_at,
-                'tweet' as type
-             FROM tweets WHERE 1=1"""
+    # Tweets — full columns, sort by created_at (real post time) falling back to scraped_at
+    sql = "SELECT *, 'tweet' as type FROM tweets WHERE 1=1"
     params = []
     if platform:
         sql += " AND platform=?"
@@ -115,63 +112,43 @@ def timeline(
     if source:
         sql += " AND source=?"
         params.append(source)
+    # Sort by created_at descending. Replace timezone suffix for consistent sorting.
+    sql += """ ORDER BY REPLACE(REPLACE(created_at, '+00:00', 'Z'), '.000Z', 'Z') DESC LIMIT ? OFFSET ?"""
+    params.extend([limit, offset])
+    for row in conn.execute(sql, params).fetchall():
+        items.append(dict(row))
 
-    # Contacts (recently scraped)
-    contact_sql = """SELECT id, platform, username, display_name, bio,
-                followers_count, following_count, relationship, profile_image,
-                scraped_at, scraped_at as created_at,
-                'contact' as type
-             FROM contacts WHERE 1=1"""
-    c_params = []
-    if platform:
-        contact_sql += " AND platform=?"
-        c_params.append(platform)
+    # If not filtering by source, also include recent contacts and links
+    if not source:
+        # Contacts scraped in last 24h
+        for row in conn.execute("""
+            SELECT *, 'contact' as type FROM contacts
+            WHERE scraped_at > datetime('now', '-1 day')
+            ORDER BY scraped_at DESC LIMIT 20
+        """).fetchall():
+            d = dict(row)
+            d["type"] = "contact"
+            items.append(d)
 
-    # Links (recently found)
-    link_sql = """SELECT CAST(id AS TEXT) as id, platform, domain, '' as author_username,
-                title as display_name, description as text,
-                url, fetch_status, created_at, created_at as scraped_at,
-                'link' as type
-             FROM links WHERE 1=1"""
-    l_params = []
+        # Links found in last 24h
+        for row in conn.execute("""
+            SELECT *, 'link' as type FROM links
+            WHERE created_at > datetime('now', '-1 day')
+            ORDER BY created_at DESC LIMIT 20
+        """).fetchall():
+            d = dict(row)
+            d["type"] = "link"
+            items.append(d)
 
-    # Union all and sort by scraped_at desc
-    if source:
-        # Only tweets when filtering by source
-        union = f"SELECT * FROM ({sql}) ORDER BY scraped_at DESC LIMIT ? OFFSET ?"
-        params.extend([limit, offset])
-    else:
-        union = f"""
-            SELECT * FROM (
-                SELECT id, platform, author_username, '' as bio, text, source, url, created_at, scraped_at, type FROM ({sql})
-                UNION ALL
-                SELECT id, platform, username as author_username, bio, '' as text, relationship as source, '' as url, created_at, scraped_at, type FROM ({contact_sql})
-                UNION ALL
-                SELECT id, platform, author_username, '' as bio, text, 'link' as source, url, created_at, scraped_at, type FROM ({link_sql})
-            ) ORDER BY scraped_at DESC LIMIT ? OFFSET ?
-        """
-        params = params + c_params + l_params + [limit, offset]
-
-    try:
-        rows = conn.execute(union, params).fetchall()
-        items = [dict(r) for r in rows]
-    except Exception:
-        # Fallback: just tweets
-        sql += " ORDER BY scraped_at DESC LIMIT ? OFFSET ?"
-        params_fb = []
-        if platform:
-            params_fb.append(platform)
-        if source:
-            params_fb.append(source)
-        params_fb.extend([limit, offset])
-        rows = conn.execute(
-            """SELECT *, 'tweet' as type FROM tweets WHERE 1=1
-               {} {} ORDER BY scraped_at DESC LIMIT ? OFFSET ?""".format(
-                "AND platform=?" if platform else "",
-                "AND source=?" if source else "",
-            ), params_fb
-        ).fetchall()
-        items = [dict(r) for r in rows]
+        # Re-sort everything by time
+        def sort_key(x):
+            ca = x.get("created_at") or ""
+            # Only use created_at if it's an ISO timestamp
+            if ca.startswith("202"):
+                return ca
+            return x.get("scraped_at") or ""
+        items.sort(key=sort_key, reverse=True)
+        items = items[:limit]
 
     conn.close()
     return {"count": len(items), "items": items}
@@ -201,7 +178,7 @@ def search(
     """Search with FTS5 + LIKE fallback."""
     conn = get_db()
     results = []
-    search_types = types.split(",") if types != "all" else ["tweet", "link", "contact"]
+    search_types = types.split(",") if types != "all" else ["tweet", "link", "contact", "message"]
     fts_q = _safe_fts(q)
 
     if "tweet" in search_types:
@@ -304,6 +281,28 @@ def search(
             for row in conn.execute(sql, params).fetchall():
                 r = dict(row)
                 r["type"] = "contact"
+                results.append(r)
+
+    if "message" in search_types:
+        # Search Telegram messages
+        if fts_q:
+            try:
+                sql = "SELECT m.* FROM messages_fts f JOIN messages m ON m.rowid = f.rowid WHERE messages_fts MATCH ?"
+                sql += f" ORDER BY m.created_at DESC LIMIT {limit}"
+                for row in conn.execute(sql, [fts_q]).fetchall():
+                    r = dict(row)
+                    r["type"] = "message"
+                    results.append(r)
+            except Exception:
+                pass
+        # LIKE fallback
+        like_q = f"%{q}%"
+        sql = "SELECT * FROM messages WHERE (text LIKE ? OR author LIKE ? OR chat_name LIKE ?) ORDER BY created_at DESC"
+        sql += f" LIMIT {limit}"
+        for row in conn.execute(sql, [like_q, like_q, like_q]).fetchall():
+            r = dict(row)
+            if r["id"] not in {x.get("id") for x in results if x.get("type") == "message"}:
+                r["type"] = "message"
                 results.append(r)
 
     conn.close()
