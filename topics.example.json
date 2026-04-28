@@ -1,0 +1,157 @@
+{
+  "defaults": {
+    "window_minutes": 120,
+    "min_items": 2,
+    "min_score": 8,
+    "max_items": 500,
+    "official_source_score": 4,
+    "security_advisory_score": 5,
+    "same_author_pileon_penalty": 3,
+    "meme_only_cluster_penalty": 2
+  },
+  "topics": [
+    {
+      "id": "ai_agents",
+      "name": "AI agents and dev tools",
+      "priority": 5,
+      "keywords": [
+        "agent",
+        "agents",
+        "agentic",
+        "mcp",
+        "tool use",
+        "claude code",
+        "cursor",
+        "coding agent",
+        "autonomous"
+      ],
+      "domains": [
+        "github.com",
+        "anthropic.com",
+        "openai.com",
+        "huggingface.co"
+      ],
+      "official_accounts": [
+        "anthropicai",
+        "openai",
+        "github",
+        "huggingface"
+      ],
+      "official_domains": [
+        "anthropic.com",
+        "openai.com",
+        "github.blog",
+        "huggingface.co"
+      ],
+      "meme_terms": [
+        "lmao",
+        "lol",
+        "vibes",
+        "gm",
+        "ngmi"
+      ]
+    },
+    {
+      "id": "ai_models",
+      "name": "AI model releases",
+      "priority": 4,
+      "keywords": [
+        "model release",
+        "new model",
+        "benchmark",
+        "eval",
+        "weights",
+        "qwen",
+        "llama",
+        "mistral",
+        "deepseek",
+        "gemini",
+        "gpt",
+        "claude",
+        "inference"
+      ],
+      "domains": [
+        "huggingface.co",
+        "arxiv.org",
+        "openai.com",
+        "anthropic.com"
+      ],
+      "official_accounts": [
+        "qwenlm",
+        "openai",
+        "anthropicai",
+        "mistralai",
+        "deepseek_ai"
+      ],
+      "official_domains": [
+        "huggingface.co",
+        "openai.com",
+        "anthropic.com",
+        "mistral.ai"
+      ]
+    },
+    {
+      "id": "stablecoins",
+      "name": "Stablecoins and payments",
+      "priority": 4,
+      "keywords": [
+        "stablecoin",
+        "stablecoins",
+        "usdc",
+        "usdt",
+        "circle",
+        "tether",
+        "payments",
+        "payment rail",
+        "tokenized deposits",
+        "rwa"
+      ],
+      "domains": [
+        "circle.com",
+        "tether.to"
+      ],
+      "official_accounts": [
+        "circle",
+        "tether_to"
+      ],
+      "official_domains": [
+        "circle.com",
+        "tether.to"
+      ]
+    },
+    {
+      "id": "crypto_launches",
+      "name": "Crypto launches and infra",
+      "priority": 3,
+      "keywords": [
+        "mainnet",
+        "testnet",
+        "launch",
+        "protocol",
+        "defi",
+        "ethereum",
+        "solana",
+        "bitcoin",
+        "onchain",
+        "rollup",
+        "zk"
+      ],
+      "domains": [
+        "github.com"
+      ],
+      "official_domains": [
+        "github.com"
+      ],
+      "security_terms": [
+        "exploit",
+        "vulnerability",
+        "cve",
+        "incident",
+        "postmortem",
+        "security advisory",
+        "hack",
+        "drain"
+      ]
+    }
+  ]
+}

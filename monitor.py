@@ -71,14 +71,26 @@ def main():
     from scrapers.telegram import scrape_telegram_groups
     from enrichment.links import enrich_pending_links
 
-    # Optional: embeddings (requires openai)
+    # Optional: embeddings (OpenAI or local llama.cpp-compatible server)
     embed_available = False
     try:
-        from enrichment.embeddings import embed_tweets, embed_links, embed_contacts
-        embed_available = True
-        log("Embeddings enabled (OpenAI)")
-    except Exception:
-        log("Embeddings disabled (no openai package)")
+        from enrichment.embeddings import (
+            embed_tweets,
+            embed_links,
+            embed_contacts,
+            embeddings_enabled,
+            embedding_status,
+        )
+        status = embedding_status()
+        embed_available = embeddings_enabled()
+        if embed_available:
+            log(f"Embeddings enabled ({status['provider']}: {status['model']})")
+        else:
+            missing = ", ".join(status.get("missing", []))
+            suffix = f"; missing {missing}" if missing else ""
+            log(f"Embeddings disabled ({status['provider']}{suffix})")
+    except Exception as e:
+        log(f"Embeddings disabled ({e})")
 
     # Digest
     from enrichment.digest import send_digest

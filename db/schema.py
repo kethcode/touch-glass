@@ -25,7 +25,7 @@ def get_db() -> sqlite3.Connection:
     return conn
 
 
-def init_db():
+def init_db(verbose: bool = True):
     conn = get_db()
     cur = conn.cursor()
 
@@ -134,6 +134,71 @@ def init_db():
         created_at TEXT NOT NULL,
         PRIMARY KEY (entity_type, entity_id)
     );
+
+    -- Derived candidate events for external agents/digests
+    CREATE TABLE IF NOT EXISTS detected_events (
+        id TEXT PRIMARY KEY,
+        topic_id TEXT NOT NULL,
+        topic_name TEXT NOT NULL,
+        window_start TEXT NOT NULL,
+        window_end TEXT NOT NULL,
+        score REAL NOT NULL,
+        status TEXT NOT NULL DEFAULT 'new',
+        title TEXT,
+        summary TEXT,
+        metadata TEXT DEFAULT '{}',
+        created_at TEXT NOT NULL,
+        delivered_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_detected_events_topic ON detected_events(topic_id);
+    CREATE INDEX IF NOT EXISTS idx_detected_events_status ON detected_events(status);
+    CREATE INDEX IF NOT EXISTS idx_detected_events_window ON detected_events(window_end);
+
+    CREATE TABLE IF NOT EXISTS event_items (
+        event_id TEXT NOT NULL REFERENCES detected_events(id) ON DELETE CASCADE,
+        item_type TEXT NOT NULL,
+        item_id TEXT NOT NULL,
+        rank INTEGER DEFAULT 0,
+        score REAL DEFAULT 0,
+        metadata TEXT DEFAULT '{}',
+        PRIMARY KEY (event_id, item_type, item_id)
+    );
+
+    -- Telegram messages and derived conversation snippets
+    CREATE TABLE IF NOT EXISTS messages (
+        id TEXT PRIMARY KEY,
+        platform TEXT NOT NULL DEFAULT 'telegram',
+        chat_name TEXT,
+        chat_type TEXT,
+        author TEXT,
+        text TEXT,
+        has_link INTEGER DEFAULT 0,
+        url TEXT,
+        metadata TEXT DEFAULT '{}',
+        scraped_at TEXT NOT NULL,
+        created_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_messages_platform ON messages(platform);
+    CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_name);
+    CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at);
+    CREATE INDEX IF NOT EXISTS idx_messages_scraped ON messages(scraped_at);
+
+    CREATE TABLE IF NOT EXISTS conversations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        platform TEXT NOT NULL DEFAULT 'telegram',
+        chat_name TEXT,
+        chat_type TEXT,
+        snippet TEXT,
+        participants TEXT DEFAULT '[]',
+        message_count INTEGER DEFAULT 0,
+        has_links INTEGER DEFAULT 0,
+        metadata TEXT DEFAULT '{}',
+        scraped_at TEXT NOT NULL,
+        created_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_conversations_platform ON conversations(platform);
+    CREATE INDEX IF NOT EXISTS idx_conversations_chat ON conversations(chat_name);
+    CREATE INDEX IF NOT EXISTS idx_conversations_scraped ON conversations(scraped_at);
     """)
 
     # FTS5 tables (can't use IF NOT EXISTS, so check first)
@@ -163,9 +228,18 @@ def init_db():
         )
         """)
 
+    if "messages_fts" not in tables:
+        cur.execute("""
+        CREATE VIRTUAL TABLE messages_fts USING fts5(
+            text, author, chat_name,
+            content=messages, content_rowid=rowid
+        )
+        """)
+
     conn.commit()
     conn.close()
-    print(f"Database initialized at {DB_PATH}")
+    if verbose:
+        print(f"Database initialized at {DB_PATH}")
 
 
 # --- Helper functions for upserting with FTS sync ---

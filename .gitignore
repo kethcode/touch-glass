@@ -9,3 +9,4 @@ __pycache__/
 /tmp/
 *.log
 node_modules/
+topics.json
