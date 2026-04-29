@@ -19,6 +19,7 @@ Runs indefinitely until killed.
 
 import sys
 import os
+import json
 import random
 import time
 import traceback
@@ -63,29 +64,55 @@ def sleep_between(base_seconds: float, jitter_seconds: float = 0):
     time.sleep(delay)
 
 
+def _result_count(result: dict | None, keys: tuple[str, ...]) -> int:
+    if not isinstance(result, dict):
+        return 0
+    for key in keys:
+        value = result.get(key)
+        if isinstance(value, int):
+            return value
+    return 0
+
+
+def _log_scrape_run(name: str, status: str, result: dict | None, error: str | None, started_at: str):
+    try:
+        conn = get_db()
+        finished_at = datetime.now(timezone.utc).isoformat()
+        items_found = _result_count(result, ("total_seen", "total", "messages", "contacts", "pending", "count"))
+        items_new = _result_count(result, ("new_tweets", "new_posts", "new", "new_contacts", "enriched", "embedded"))
+        cursor = json.dumps(result, default=str)[:1000] if isinstance(result, dict) else None
+        conn.execute("""
+            INSERT INTO scrape_log (task, status, items_found, items_new, cursor, error, started_at, finished_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            name,
+            status,
+            items_found,
+            items_new,
+            cursor,
+            error[:500] if error else None,
+            started_at,
+            finished_at,
+        ))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+
 def run_task(name: str, fn, **kwargs) -> dict | None:
     """Run a scraping task with error handling."""
+    started_at = datetime.now(timezone.utc).isoformat()
     log(f"Starting: {name}")
     try:
         result = fn(**kwargs)
         log(f"Done: {name} -> {result}")
+        _log_scrape_run(name, "ok", result, None, started_at)
         return result
     except Exception as e:
         log(f"FAILED: {name} -> {e}")
         traceback.print_exc()
-        # Log to DB
-        try:
-            conn = get_db()
-            conn.execute("""
-                INSERT INTO scrape_log (task, status, error, started_at, finished_at)
-                VALUES (?, 'failed', ?, ?, ?)
-            """, (name, str(e)[:500],
-                  datetime.now(timezone.utc).isoformat(),
-                  datetime.now(timezone.utc).isoformat()))
-            conn.commit()
-            conn.close()
-        except Exception:
-            pass
+        _log_scrape_run(name, "failed", None, str(e), started_at)
         return None
 
 
@@ -137,6 +164,9 @@ def main():
     cycle_interval = env_int("TOUCH_GLASS_CYCLE_SECONDS", 600, minimum=60)
     cycle_jitter = env_int("TOUCH_GLASS_CYCLE_JITTER_SECONDS", 180, minimum=0)
     task_jitter = env_int("TOUCH_GLASS_TASK_JITTER_SECONDS", 7, minimum=0)
+    timeline_pages = env_int("TOUCH_GLASS_TIMELINE_PAGES", 5, minimum=1)
+    bookmarks_pages = env_int("TOUCH_GLASS_BOOKMARKS_PAGES", 8, minimum=1)
+    own_tweets_pages = env_int("TOUCH_GLASS_OWN_TWEETS_PAGES", 5, minimum=1)
 
     log(f"Monitor started. Cycle interval: {cycle_interval}s (+0-{cycle_jitter}s jitter)")
     enabled = []
@@ -154,6 +184,7 @@ def main():
         enabled.append("Telegram")
     enabled.append("links")
     log("Scraping: " + ", ".join(enabled))
+    log(f"Pages: timeline={timeline_pages}, bookmarks={bookmarks_pages}, own={own_tweets_pages}")
     log("Press Ctrl+C to stop")
     print("=" * 60, flush=True)
 
@@ -166,17 +197,17 @@ def main():
 
         # Timeline: every cycle (5 pages = ~50 tweets)
         if enable_timeline:
-            run_task("twitter_timeline", scrape_timeline, pages=5)
+            run_task("twitter_timeline", scrape_timeline, pages=timeline_pages)
             sleep_between(3, task_jitter)
 
         # Bookmarks: every cycle (8 pages deep)
         if enable_bookmarks:
-            run_task("twitter_bookmarks", scrape_bookmarks, pages=8)
+            run_task("twitter_bookmarks", scrape_bookmarks, pages=bookmarks_pages)
             sleep_between(3, task_jitter)
 
         # Own tweets: every 3rd cycle
         if enable_own_tweets and cycle % 3 == 0:
-            run_task("twitter_own", scrape_own_tweets, pages=5)
+            run_task("twitter_own", scrape_own_tweets, pages=own_tweets_pages)
             sleep_between(3, task_jitter)
 
         # Followers: every 6th cycle (deep scroll)

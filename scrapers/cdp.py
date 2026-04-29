@@ -79,12 +79,27 @@ def get_page(url_pattern: str):
     return context.new_page()
 
 
+def _normalize_url(url: str) -> str:
+    if not url.startswith("http"):
+        return "https://" + url
+    return url
+
+
+def _url_key(url: str) -> str:
+    return url.replace("https://", "").replace("http://", "").rstrip("/")
+
+
+def _page_matches(page_url: str, target_url: str) -> bool:
+    page_key = _url_key(page_url)
+    target_key = _url_key(target_url)
+    return page_key == target_key or page_key.startswith(target_key + "?")
+
+
 def navigate(url: str, wait_until: str = "domcontentloaded"):
     """Navigate to a URL, return the page."""
     _, context = _get_browser()
     page = context.pages[0] if context.pages else context.new_page()
-    if not url.startswith("http"):
-        url = "https://" + url
+    url = _normalize_url(url)
     page.goto(url, wait_until=wait_until, timeout=30000)
     return page
 
@@ -115,17 +130,29 @@ def scroll_to_top(page):
     page.evaluate("window.scrollTo(0, 0)")
 
 
-def ensure_page(url: str, wait_time: float = 3.0):
+def ensure_page(url: str, wait_time: float = 3.0, force_navigate: bool = False):
     """Ensure a page is loaded with the given URL."""
     _, context = _get_browser()
+    url = _normalize_url(url)
 
     # Look for existing page
     for page in context.pages:
-        if url.replace("https://", "").replace("http://", "") in page.url:
+        if _page_matches(page.url, url):
+            try:
+                page.bring_to_front()
+            except Exception:
+                pass
+            if force_navigate:
+                try:
+                    page.goto(url, wait_until="domcontentloaded", timeout=45000)
+                except Exception:
+                    page.reload(wait_until="domcontentloaded", timeout=45000)
+                time.sleep(wait_time)
             return page
 
     # Navigate
-    page = navigate(url)
+    page = context.new_page()
+    page.goto(url, wait_until="domcontentloaded", timeout=45000)
     time.sleep(wait_time)
     return page
 
@@ -160,14 +187,37 @@ EXTRACT_TWEETS_JS = """
 
         const tweetTextEl = t.querySelector('[data-testid="tweetText"]');
         const links = [];
-        if (tweetTextEl) {
-            tweetTextEl.querySelectorAll('a[href]').forEach(a => {
-                const href = a.getAttribute('href');
-                if (href && !href.includes('/status/') && !href.startsWith('/')) {
-                    links.push(href.startsWith('http') ? href : 'https://x.com' + href);
-                }
+        t.querySelectorAll('a[href]').forEach(a => {
+            const rawHref = a.getAttribute('href');
+            if (!rawHref) return;
+            let href = rawHref;
+            try {
+                href = new URL(rawHref, location.origin).href;
+            } catch (_) {
+                return;
+            }
+
+            let parsed = null;
+            try {
+                parsed = new URL(href);
+            } catch (_) {
+                return;
+            }
+
+            const host = parsed.hostname.replace(/^www\\./, '').toLowerCase();
+            const path = parsed.pathname || '';
+            const isXHost = ['x.com', 'twitter.com', 'mobile.twitter.com'].includes(host);
+            if (isXHost && path.match(/^\\/[^/]+\\/status\\/\\d+/)) return;
+            if (isXHost && !path.startsWith('/i/cards')) return;
+
+            links.push({
+                href: href,
+                text: (a.innerText || a.textContent || '').trim(),
+                title: a.getAttribute('title') || '',
+                expanded_url: a.getAttribute('data-expanded-url') || a.getAttribute('data-url') || '',
+                aria_label: a.getAttribute('aria-label') || '',
             });
-        }
+        });
 
         const timeEl = t.querySelector('time');
         const timestamp = timeEl ? timeEl.getAttribute('datetime') : null;

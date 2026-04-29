@@ -138,6 +138,7 @@ def enrich_pending_links(batch_size: int = 20) -> dict:
 
     if not pending:
         print("[links] No pending links to enrich")
+        conn.close()
         return {"task": "link_enrichment", "enriched": 0, "failed": 0}
 
     enriched = 0
@@ -148,7 +149,7 @@ def enrich_pending_links(batch_size: int = 20) -> dict:
 
         # Skip known non-fetchable domains
         domain = urlparse(url).netloc
-        if any(skip in domain for skip in ["t.co", "pic.twitter.com"]):
+        if any(skip in domain for skip in ["pic.twitter.com"]):
             conn.execute(
                 "UPDATE links SET fetch_status='skipped', fetched_at=? WHERE id=?",
                 (now, link_id)

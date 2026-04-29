@@ -4,25 +4,166 @@ Scrape tweets from X/Twitter home timeline, bookmarks, and own profile via Playw
 import os
 import re
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
-from scrapers.cdp import ensure_page, evaluate_json, scroll_down, wait, EXTRACT_TWEETS_JS
+from scrapers.cdp import ensure_page, scroll_down, scroll_to_top, wait, EXTRACT_TWEETS_JS
 from db.schema import get_db, upsert_tweet, upsert_link, link_tweet_url
 
-URL_RE = re.compile(r'https?://\S+')
+URL_RE = re.compile(r'https?://[^\s<>"\']+')
+DOMAIN_URL_RE = re.compile(
+    r'(?i)\b(?:https?://)?'
+    r'([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?'
+    r'(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+'
+    r'(?:/[^\s<>"\']*)?)'
+)
+TRAILING_PUNCT = ".,;:!?)>]}'\""
 
 
 def extract_urls_from_text(text: str) -> list[str]:
     if not text:
         return []
     urls = URL_RE.findall(text)
-    return [u.rstrip(".,;:!?)>]}") for u in urls if len(u) > 10]
+    return [u.rstrip(TRAILING_PUNCT) for u in urls if len(u) > 10]
+
+
+def _coerce_url(value: str | None) -> str | None:
+    if not value:
+        return None
+    raw = value.strip()
+    if not raw or len(raw) > 500:
+        return None
+
+    compact = re.sub(r"\s+", "", raw)
+    compact = compact.rstrip(TRAILING_PUNCT)
+    if not compact:
+        return None
+
+    if not compact.startswith(("http://", "https://")):
+        match = DOMAIN_URL_RE.search(compact)
+        if not match:
+            return None
+        compact = "https://" + match.group(1)
+
+    parsed = urlparse(compact)
+    host = parsed.netloc.lower()
+    if not parsed.scheme or not host or "." not in host:
+        return None
+
+    path = parsed.path or ""
+    if host in {"x.com", "twitter.com", "mobile.twitter.com"}:
+        if re.match(r"^/[^/]+/status/\d+", path):
+            return None
+        if path.startswith("/i/cards"):
+            return None
+        return None
+    return compact
+
+
+def _extract_dom_links(raw_links: list) -> list[str]:
+    urls = []
+    for item in raw_links or []:
+        candidates = []
+        if isinstance(item, dict):
+            candidates.extend([
+                item.get("expanded_url"),
+                item.get("title"),
+                item.get("text"),
+                item.get("aria_label"),
+                item.get("href"),
+            ])
+        else:
+            candidates.append(str(item))
+
+        for candidate in candidates:
+            url = _coerce_url(candidate)
+            if url:
+                urls.append(url)
+                break
+    return urls
+
+
+def _dedupe_urls(urls: list[str]) -> list[str]:
+    seen = set()
+    out = []
+    for url in urls:
+        normalized = url.strip()
+        key = normalized.rstrip("/")
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(normalized)
+    return out
+
+
+def _click_show_new_posts(page, source: str) -> bool:
+    selectors = [
+        "div[role='button']:has-text('Show')",
+        "button:has-text('Show')",
+        "span:has-text('Show')",
+    ]
+    for selector in selectors:
+        try:
+            locator = page.locator(selector).first
+            if locator.count() == 0:
+                continue
+            text = locator.inner_text(timeout=1000).lower()
+            if "post" not in text and "tweet" not in text:
+                continue
+            locator.click(timeout=2000)
+            wait(1)
+            print(f"  [{source}] clicked '{text[:80]}'")
+            return True
+        except Exception:
+            continue
+    return False
+
+
+def _page_diagnostics(page) -> dict:
+    diagnostics = {}
+    for key, getter in {
+        "url": lambda: page.url,
+        "title": page.title,
+        "article_count": lambda: page.evaluate("document.querySelectorAll('article[data-testid=\"tweet\"]').length"),
+        "body": lambda: page.evaluate("(document.body && document.body.innerText || '').slice(0, 500)"),
+    }.items():
+        try:
+            value = getter()
+            if isinstance(value, str):
+                value = re.sub(r"\s+", " ", value).strip()
+            diagnostics[key] = value
+        except Exception as exc:
+            diagnostics[key] = f"<error: {exc}>"
+    return diagnostics
+
+
+def _prepare_page(url: str, source: str):
+    page = ensure_page(url, wait_time=3.0, force_navigate=True)
+    try:
+        page.wait_for_load_state("domcontentloaded", timeout=10000)
+    except Exception:
+        pass
+    try:
+        page.bring_to_front()
+    except Exception:
+        pass
+    _click_show_new_posts(page, source)
+    try:
+        scroll_to_top(page)
+        wait(1)
+    except Exception:
+        pass
+    try:
+        page.wait_for_selector('article[data-testid="tweet"]', timeout=12000)
+    except Exception:
+        diag = _page_diagnostics(page)
+        print(f"  [{source}] no tweet articles after navigation: {diag}")
+    return page
 
 
 def _scrape_page(url: str, source: str, pages: int) -> dict:
     """Generic tweet page scraper."""
     now = datetime.now(timezone.utc).isoformat()
-    page = ensure_page(url)
-    wait(2)
+    page = _prepare_page(url, source)
 
     all_tweets = {}
     total_links = 0
@@ -49,11 +190,15 @@ def _scrape_page(url: str, source: str, pages: int) -> dict:
             tweet["created_at"] = tweet.pop("timestamp", None)
             dom_links = tweet.pop("links", [])
             text_links = extract_urls_from_text(tweet.get("text", ""))
-            tweet["all_links"] = list(set(dom_links + text_links))
+            tweet["all_links"] = _dedupe_urls(_extract_dom_links(dom_links) + text_links)
             all_tweets[tid] = tweet
 
         scroll_down(page)
         wait(1.5 + (pg * 0.3))
+
+    if not all_tweets:
+        diag = _page_diagnostics(page)
+        print(f"  [{source}] extracted zero tweets: {diag}")
 
     # Store
     conn = get_db()
@@ -65,8 +210,6 @@ def _scrape_page(url: str, source: str, pages: int) -> dict:
             if is_new:
                 new_tweets += 1
             for url in links:
-                if "t.co/" in url and len(url) < 30:
-                    continue
                 if re.match(r'https?://(x|twitter)\.com/\w+/status/', url):
                     continue
                 link_id = upsert_link(conn, url)
