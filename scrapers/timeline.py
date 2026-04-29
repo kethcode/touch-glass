@@ -10,6 +10,7 @@ from scrapers.cdp import ensure_page, scroll_down, scroll_to_top, wait, EXTRACT_
 from db.schema import get_db, upsert_tweet, upsert_link, link_tweet_url
 
 URL_RE = re.compile(r'https?://[^\s<>"\']+')
+SCHEME_RE = re.compile(r'(?i)https?\s*:\s*/\s*/')
 DOMAIN_URL_RE = re.compile(
     r'(?i)\b(?:https?://)?'
     r'([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?'
@@ -17,6 +18,7 @@ DOMAIN_URL_RE = re.compile(
     r'(?:/[^\s<>"\']*)?)'
 )
 TRAILING_PUNCT = ".,;:!?)>]}'\""
+URL_STOP_TOKENS = {"...", "|", "*", "-", "->"}
 
 
 def extract_urls_from_text(text: str) -> list[str]:
@@ -26,23 +28,85 @@ def extract_urls_from_text(text: str) -> list[str]:
     return [u.rstrip(TRAILING_PUNCT) for u in urls if len(u) > 10]
 
 
+def _looks_like_url_continuation(token: str, current: str, allow_short_alpha: bool = False) -> bool:
+    if not token:
+        return False
+    cleaned = token.strip(TRAILING_PUNCT)
+    if not cleaned or cleaned in URL_STOP_TOKENS:
+        return False
+    if cleaned.startswith(("@", "#")):
+        return False
+    if any(ch in cleaned for ch in "/?&=#%._-"):
+        return True
+    if allow_short_alpha and "/" in current and len(cleaned) <= 8 and cleaned.isalnum():
+        return True
+    return False
+
+
+def _repair_spaced_scheme_url(raw: str) -> str | None:
+    match = SCHEME_RE.search(raw)
+    if not match:
+        return None
+
+    prefix = re.sub(r"\s+", "", match.group(0)).lower()
+    tail = raw[match.end():].strip()
+    if not tail:
+        return None
+
+    parts = []
+    current = prefix
+    for token in re.split(r"\s+", tail):
+        cleaned = token.strip()
+        if not cleaned or cleaned in URL_STOP_TOKENS:
+            break
+        if not parts:
+            parts.append(cleaned)
+            current += cleaned
+            continue
+        if not _looks_like_url_continuation(cleaned, current, allow_short_alpha=True):
+            break
+        parts.append(cleaned)
+        current += cleaned
+
+    if not parts:
+        return None
+    return prefix + "".join(parts)
+
+
+def _find_domain_url(raw: str) -> str | None:
+    match = DOMAIN_URL_RE.search(raw)
+    if not match:
+        return None
+
+    value = match.group(1).rstrip(TRAILING_PUNCT)
+    tail = raw[match.end():].strip()
+    current = value
+    for token in re.split(r"\s+", tail):
+        cleaned = token.strip()
+        if not _looks_like_url_continuation(cleaned, current):
+            break
+        value += cleaned.rstrip(TRAILING_PUNCT)
+        current = value
+
+    return "https://" + value
+
+
 def _coerce_url(value: str | None) -> str | None:
     if not value:
         return None
-    raw = value.strip()
+    raw = value.strip().replace("\u2026", " ... ")
     if not raw or len(raw) > 500:
         return None
 
-    compact = re.sub(r"\s+", "", raw)
+    compact = _repair_spaced_scheme_url(raw)
+    if compact is None:
+        compact = raw.rstrip(TRAILING_PUNCT)
+    if not compact.startswith(("http://", "https://")):
+        compact = _find_domain_url(raw) or ""
+
     compact = compact.rstrip(TRAILING_PUNCT)
     if not compact:
         return None
-
-    if not compact.startswith(("http://", "https://")):
-        match = DOMAIN_URL_RE.search(compact)
-        if not match:
-            return None
-        compact = "https://" + match.group(1)
 
     parsed = urlparse(compact)
     host = parsed.netloc.lower()
