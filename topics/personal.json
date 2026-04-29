@@ -1,0 +1,24 @@
+{
+  "topics": [
+    {
+      "id": "your_handle_mentions",
+      "name": "Keth handle mentions",
+      "priority": 8
+    },
+    {
+      "id": "digital_sovereignty",
+      "name": "Digital sovereignty and self-hosting",
+      "priority": 5
+    },
+    {
+      "id": "safety_critical_systems",
+      "name": "Safety-critical systems and industrial assurance",
+      "priority": 3
+    },
+    {
+      "id": "gaming_releases",
+      "name": "Selected game releases and patches",
+      "priority": 2
+    }
+  ]
+}

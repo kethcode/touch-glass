@@ -1,0 +1,24 @@
+{
+  "defaults": {
+    "window_minutes": 240,
+    "min_items": 2,
+    "min_score": 8,
+    "max_items": 1000,
+    "official_source_score": 4,
+    "security_advisory_score": 5,
+    "same_author_pileon_penalty": 3,
+    "meme_only_cluster_penalty": 2
+  },
+  "imports": [
+    "priority/wildcat.json",
+    "priority/defi_security.json",
+    "crypto_legal.json",
+    "crypto_infra.json",
+    "ai_tools.json",
+    "ai_research.json",
+    "hardware.json",
+    "health.json",
+    "personal.json",
+    "watch/index.json"
+  ]
+}

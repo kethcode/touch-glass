@@ -1,0 +1,39 @@
+{
+  "topics": [
+    {
+      "id": "ai_for_security",
+      "name": "AI for security and automated auditing",
+      "priority": 8
+    },
+    {
+      "id": "frontier_model_releases",
+      "name": "Frontier model releases",
+      "priority": 7
+    },
+    {
+      "id": "ai_agents_tools",
+      "name": "AI agents and developer tools",
+      "priority": 7
+    },
+    {
+      "id": "ai_inference_infra",
+      "name": "AI inference infrastructure",
+      "priority": 7
+    },
+    {
+      "id": "local_models",
+      "name": "Local open-weight models",
+      "priority": 7
+    },
+    {
+      "id": "claude_anthropic_product",
+      "name": "Claude and Anthropic product changes",
+      "priority": 6
+    },
+    {
+      "id": "openai_codex_product",
+      "name": "OpenAI Codex and agent product changes",
+      "priority": 6
+    }
+  ]
+}

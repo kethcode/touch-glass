@@ -76,7 +76,7 @@ Important files:
 - `db/schema.py` defines the SQLite schema and upsert helpers.
 - `api/server.py` provides the web UI and search/timeline API.
 - `DEPLOYMENT.md` is the Ubuntu 24.04 runbook.
-- `topics.example.json` is the example event detection config.
+- `topics/index.json` is the active grouped event detection config.
 
 SQLite defaults to `brain.db` in the repo root. For server deployment, consider
 setting `BRAIN_DB` to a path on the data drive before first run if the database
@@ -156,13 +156,13 @@ be the commentary agent itself.
 Basic command:
 
 ```bash
-python -m enrichment.events detect --config topics.json --format markdown
+python -m enrichment.events detect --config topics/index.json --format markdown
 ```
 
 Hermes cron command shape:
 
 ```bash
-python -m enrichment.events detect --config topics.json --format markdown --mark-delivered
+python -m enrichment.events detect --config topics/index.json --format markdown --mark-delivered
 ```
 
 If nothing crosses threshold, output is exactly:
@@ -217,7 +217,7 @@ query tools beyond "run detector and summarize output".
 First-pass Hermes prompt from `DEPLOYMENT.md`:
 
 ```text
-/cron add "every 15m" "Run `cd /opt/touch-glass && set -a && source .env && set +a && .venv/bin/python -m enrichment.events detect --config topics.json --format markdown --mark-delivered`. If the output is [SILENT], respond exactly [SILENT]. Otherwise, write a concise Telegram briefing about the candidate events."
+/cron add "every 15m" "Run `cd /opt/touch-glass && set -a && source .env && set +a && .venv/bin/python -m enrichment.events detect --config topics/index.json --format markdown --mark-delivered`. If the output is [SILENT], respond exactly [SILENT]. Otherwise, write a concise Telegram briefing about the candidate events."
 ```
 
 Known delivery caveat: with `--mark-delivered`, events are marked delivered
@@ -264,7 +264,7 @@ Follow `DEPLOYMENT.md` on the Ubuntu server:
 1. Install system packages.
 2. Create `touchglass` user and clone repo to `/opt/touch-glass`.
 3. Create Python venv and install `requirements.txt`.
-4. Copy `.env.example` to `.env`; copy `topics.example.json` to `topics.json`.
+4. Copy `.env.example` to `.env`; tune grouped topic files under `topics/`.
 5. Build llama.cpp.
 6. Verify the local embedding endpoint.
 7. Start Xvfb and Chrome CDP.

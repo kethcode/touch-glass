@@ -1,0 +1,136 @@
+{
+  "topics": [
+    {
+      "id": "wildcat_mentions",
+      "name": "Wildcat direct mentions",
+      "priority": 10,
+      "window_minutes": 720,
+      "min_items": 1,
+      "min_score": 3,
+      "keywords": [
+        "wildcat finance",
+        "wildcatfi",
+        "wildcat protocol",
+        "wildcat market",
+        "wildcat vault",
+        "wildcat lending",
+        "wildcat credit",
+        "wildcat borrower",
+        "wildcat lender",
+        "wildcat.eth",
+        "@wildcatfi",
+        "@wildcat_intern",
+        "wildcat foundation"
+      ],
+      "domains": [
+        "wildcat.finance",
+        "github.com/wildcatfi"
+      ],
+      "exclude_accounts": [
+        "wildcatfi",
+        "wildcat_intern"
+      ],
+      "official_accounts": [
+        "wildcatfi",
+        "wildcat_intern"
+      ],
+      "official_domains": [
+        "wildcat.finance",
+        "github.com/wildcatfi"
+      ],
+      "security_terms": [
+        "exploit",
+        "hack",
+        "vulnerability",
+        "incident",
+        "postmortem",
+        "phishing",
+        "drain",
+        "approval",
+        "allowance",
+        "default",
+        "bad debt"
+      ],
+      "meme_terms": [
+        "gm",
+        "wagmi",
+        "lmao",
+        "lol",
+        "vibes"
+      ]
+    },
+    {
+      "id": "undercollateralized_lending",
+      "name": "Undercollateralized lending competitive scan",
+      "priority": 8,
+      "window_minutes": 720,
+      "min_items": 2,
+      "min_score": 8,
+      "keywords": [
+        "undercollateralized lending",
+        "uncollateralized lending",
+        "under-collateralized lending",
+        "onchain credit",
+        "on-chain credit",
+        "defi credit",
+        "private credit",
+        "credit vault",
+        "borrower pool",
+        "borrower market",
+        "fixed rate lending",
+        "term lending",
+        "real world credit",
+        "institutional lending",
+        "maple finance",
+        "goldfinch",
+        "clearpool",
+        "centrifuge",
+        "morpho vault",
+        "credit coop",
+        "wildcat finance"
+      ],
+      "domains": [
+        "maple.finance",
+        "goldfinch.finance",
+        "clearpool.finance",
+        "centrifuge.io",
+        "morpho.org",
+        "wildcat.finance"
+      ],
+      "official_accounts": [
+        "maplefinance",
+        "goldfinch_fi",
+        "clearpoolfin",
+        "centrifuge",
+        "morpholabs",
+        "wildcatfi"
+      ],
+      "official_domains": [
+        "maple.finance",
+        "goldfinch.finance",
+        "clearpool.finance",
+        "centrifuge.io",
+        "morpho.org",
+        "wildcat.finance"
+      ],
+      "security_terms": [
+        "default",
+        "bad debt",
+        "impairment",
+        "delinquency",
+        "liquidation",
+        "loss",
+        "exploit",
+        "hack",
+        "oracle",
+        "restructure"
+      ],
+      "meme_terms": [
+        "yield ponzi",
+        "number go up",
+        "vibes",
+        "ngmi"
+      ]
+    }
+  ]
+}

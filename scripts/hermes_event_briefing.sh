@@ -14,7 +14,7 @@ if [[ -f ".env" ]]; then
 fi
 
 PYTHON_BIN="${TOUCH_GLASS_PYTHON:-${ROOT_DIR}/.venv/bin/python}"
-TOPICS_CONFIG="${TOUCH_GLASS_TOPICS_CONFIG:-topics.json}"
+TOPICS_CONFIG="${TOUCH_GLASS_TOPICS_CONFIG:-topics/index.json}"
 PROMPT_FILE="${TOUCH_GLASS_HERMES_PROMPT:-prompts/hermes_commentary.md}"
 MARK_DELIVERED="${TOUCH_GLASS_HERMES_MARK_DELIVERED:-true}"
 

@@ -1,0 +1,29 @@
+{
+  "topics": [
+    {
+      "id": "crypto_legal_proceedings",
+      "name": "Crypto developer liability cases",
+      "priority": 9
+    },
+    {
+      "id": "sec_crypto",
+      "name": "SEC crypto enforcement and guidance",
+      "priority": 8
+    },
+    {
+      "id": "ofac_sanctions",
+      "name": "OFAC sanctions and protocol compliance",
+      "priority": 8
+    },
+    {
+      "id": "crypto_legislation",
+      "name": "Crypto legislation and rulemaking",
+      "priority": 7
+    },
+    {
+      "id": "eu_ai_regulation",
+      "name": "EU AI regulation and AI-managed finance",
+      "priority": 4
+    }
+  ]
+}

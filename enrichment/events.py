@@ -104,15 +104,76 @@ def parse_iso(value: str | None) -> datetime | None:
         return None
 
 
-def load_config(path: str | None = None) -> dict:
-    path = path or os.environ.get("TOUCH_GLASS_TOPICS_CONFIG", "topics.json")
-    if not path or not os.path.exists(path):
-        return DEFAULT_CONFIG
-    with open(path, "r", encoding="utf-8") as f:
+def _merge_defaults(base: dict, overlay: dict) -> dict:
+    merged = dict(base or {})
+    merged.update(overlay or {})
+    return merged
+
+
+def _resolve_topic_config_path(path: str | None) -> str:
+    if path:
+        return path
+    env_path = os.environ.get("TOUCH_GLASS_TOPICS_CONFIG")
+    if env_path:
+        return env_path
+    if os.path.exists(os.path.join("topics", "index.json")):
+        return os.path.join("topics", "index.json")
+    return "topics.json"
+
+
+def _load_config_file(path: str, seen: set[str]) -> dict:
+    abs_path = os.path.abspath(path)
+    if abs_path in seen:
+        raise RuntimeError(f"Recursive topic import detected at {path}")
+    if not os.path.exists(abs_path):
+        raise RuntimeError(f"Topic config not found: {path}")
+
+    seen.add(abs_path)
+    with open(abs_path, "r", encoding="utf-8") as f:
         config = json.load(f)
+
+    if not isinstance(config, dict):
+        raise RuntimeError(f"Topic config must be a JSON object: {path}")
+
+    base_dir = os.path.dirname(abs_path)
+    defaults = dict(config.get("defaults", {}))
+    topics = list(config.get("topics", []))
+
+    for import_path in config.get("imports", []):
+        if not isinstance(import_path, str) or not import_path.strip():
+            raise RuntimeError(f"Invalid topic import in {path}: {import_path!r}")
+        child_path = import_path
+        if not os.path.isabs(child_path):
+            child_path = os.path.join(base_dir, child_path)
+        child = _load_config_file(child_path, seen)
+        defaults = _merge_defaults(child.get("defaults", {}), defaults)
+        topics.extend(child.get("topics", []))
+
+    seen.remove(abs_path)
+    return {"defaults": defaults, "topics": topics}
+
+
+def _validate_config(config: dict) -> dict:
     config.setdefault("defaults", {})
     config.setdefault("topics", [])
+    topic_ids = set()
+    for topic in config["topics"]:
+        if not isinstance(topic, dict):
+            raise RuntimeError(f"Topic entries must be objects: {topic!r}")
+        topic_id = str(topic.get("id", "")).strip()
+        if not topic_id:
+            raise RuntimeError(f"Topic missing id: {topic!r}")
+        if topic_id in topic_ids:
+            raise RuntimeError(f"Duplicate topic id: {topic_id}")
+        topic_ids.add(topic_id)
     return config
+
+
+def load_config(path: str | None = None) -> dict:
+    path = _resolve_topic_config_path(path)
+    if not path or not os.path.exists(path):
+        return DEFAULT_CONFIG
+    return _validate_config(_load_config_file(path, set()))
 
 
 def _clean_text(text: str | None, limit: int = 220) -> str:
@@ -183,17 +244,21 @@ def score_item_for_topic(item: dict, topic: dict) -> tuple[float, dict]:
     keywords = _topic_terms(topic, "keywords")
     domains = _topic_terms(topic, "domains")
     accounts = [term.lstrip("@") for term in _topic_terms(topic, "accounts")]
+    exclude_accounts = [term.lstrip("@") for term in _topic_terms(topic, "exclude_accounts")]
     official_accounts = [term.lstrip("@") for term in _topic_terms(topic, "official_accounts")]
     official_domains = _topic_terms(topic, "official_domains")
     security_terms = _topic_terms(topic, "security_terms")
     meme_terms = _topic_terms(topic, "meme_terms")
+
+    author = (item.get("author_username") or "").lower().lstrip("@")
+    if author and author in exclude_accounts:
+        return 0, {}
 
     matched_keywords = [term for term in keywords if term in haystack]
     matched_domains = [
         domain for domain in domains
         if any(domain in link_domain for link_domain in link_domains)
     ]
-    author = (item.get("author_username") or "").lower().lstrip("@")
     matched_accounts = [account for account in accounts if account == author]
     matched_official_accounts = [account for account in official_accounts if account == author]
     matched_official_domains = [
@@ -334,6 +399,7 @@ def detect_events(config_path: str | None = None, window_minutes: int | None = N
         for topic in topics:
             topic_id = str(topic["id"])
             topic_name = str(topic.get("name") or topic_id)
+            priority = int(topic.get("priority") or 0)
             topic_window = int(topic.get("window_minutes") or window_minutes or defaults.get("window_minutes", 120))
             min_items = int(topic.get("min_items") or defaults.get("min_items", 2))
             min_score = float(topic.get("min_score") or defaults.get("min_score", 8))
@@ -392,6 +458,7 @@ def detect_events(config_path: str | None = None, window_minutes: int | None = N
                 "top_domains": [domain for domain, _ in domain_counts.most_common(10)],
                 "top_authors": [author for author, _ in author_counts.most_common(10)],
                 "window_minutes": topic_window,
+                "priority": priority,
             }
             title = f"{topic_name}: {len(matches)} items from {score_components['unique_authors']} authors"
             summary = _build_summary(topic_name, matches, metadata)
@@ -402,6 +469,7 @@ def detect_events(config_path: str | None = None, window_minutes: int | None = N
                 "window_start": iso(since),
                 "window_end": iso(now),
                 "score": score,
+                "priority": priority,
                 "status": "new",
                 "title": title,
                 "summary": summary,
@@ -450,7 +518,7 @@ def detect_events(config_path: str | None = None, window_minutes: int | None = N
     finally:
         conn.close()
 
-    events.sort(key=lambda event: event["score"], reverse=True)
+    events.sort(key=lambda event: (event.get("priority", 0), event["score"]), reverse=True)
     return events
 
 
@@ -461,7 +529,8 @@ def list_events(status: str = "new", limit: int = 10) -> list[dict]:
             """
             SELECT * FROM detected_events
             WHERE (? = 'all' OR status = ?)
-            ORDER BY score DESC, window_end DESC
+            ORDER BY COALESCE(CAST(json_extract(metadata, '$.priority') AS INTEGER), 0) DESC,
+                score DESC, window_end DESC
             LIMIT ?
             """,
             (status, status, limit),
@@ -516,7 +585,7 @@ def format_markdown(events: list[dict], silent_empty: bool = True) -> str:
     for event in events:
         metadata = event.get("metadata") or {}
         lines.append(f"## {event['title']}")
-        lines.append(f"Score: {event['score']} | Window: {metadata.get('window_minutes', '?')}m | Topic: `{event['topic_id']}`")
+        lines.append(f"Score: {event['score']} | Priority: {metadata.get('priority', '?')} | Window: {metadata.get('window_minutes', '?')}m | Topic: `{event['topic_id']}`")
         if event.get("summary"):
             lines.append(event["summary"])
         if metadata.get("top_domains"):

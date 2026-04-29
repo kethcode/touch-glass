@@ -1,0 +1,19 @@
+{
+  "topics": [
+    {
+      "id": "ai_memory_research",
+      "name": "AI memory and agent research",
+      "priority": 6
+    },
+    {
+      "id": "formal_methods_llm",
+      "name": "Formal methods and LLM-generated code",
+      "priority": 6
+    },
+    {
+      "id": "ai_safety_evals",
+      "name": "AI safety evaluations and governance",
+      "priority": 5
+    }
+  ]
+}

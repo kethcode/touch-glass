@@ -1,0 +1,39 @@
+{
+  "topics": [
+    {
+      "id": "ethereum_core",
+      "name": "Ethereum core protocol",
+      "priority": 7
+    },
+    {
+      "id": "stablecoins",
+      "name": "Stablecoins and payments",
+      "priority": 7
+    },
+    {
+      "id": "mev_searcher",
+      "name": "MEV searcher and market structure",
+      "priority": 6
+    },
+    {
+      "id": "eth_dev_tooling",
+      "name": "Ethereum developer tooling",
+      "priority": 6
+    },
+    {
+      "id": "rwa_tokenization",
+      "name": "RWA and tokenized treasuries",
+      "priority": 6
+    },
+    {
+      "id": "crypto_market_makers",
+      "name": "Crypto market makers and liquidity partners",
+      "priority": 5
+    },
+    {
+      "id": "ens_naming",
+      "name": "ENS naming and contenthash operations",
+      "priority": 5
+    }
+  ]
+}

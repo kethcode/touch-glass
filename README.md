@@ -120,16 +120,18 @@ python enrichment/embeddings.py status
 ### 4. Optional: Hermes handoff
 
 Touch Glass can reduce the raw feed into candidate events for a separate agent
-to interpret and deliver. Copy and tune the topic config:
+to interpret and deliver. Tune the grouped topic files under `topics/`; the
+active import list starts at `topics/index.json`.
 
 ```bash
-cp topics.example.json topics.json
+nano topics/index.json
+nano topics/priority/wildcat.json
 ```
 
 Detect recent topic events and print a compact Markdown bundle:
 
 ```bash
-python -m enrichment.events detect --config topics.json --format markdown
+python -m enrichment.events detect --config topics/index.json --format markdown
 ```
 
 Candidate event scoring emphasizes source diversity rather than raw volume:
@@ -171,7 +173,7 @@ Hermes is:
 For debugging:
 
 ```bash
-python -m enrichment.events detect --config topics.json --format json
+python -m enrichment.events detect --config topics/index.json --format json
 python -m enrichment.events list --status all --format markdown
 ```
 
@@ -273,7 +275,7 @@ curl -s http://127.0.0.1:9222/json/version | python3 -m json.tool
 Edit the active topic configuration:
 
 ```bash
-nano topics.json
+nano topics/index.json
 ```
 
 Topic edits do not require restarting the monitor. The event detector reads the
@@ -281,7 +283,7 @@ config file each time it runs. Test the current config with:
 
 ```bash
 set -a && source .env && set +a
-.venv/bin/python -m enrichment.events detect --config topics.json --format markdown
+.venv/bin/python -m enrichment.events detect --config topics/index.json --format markdown
 ```
 
 If the output is `[SILENT]`, no topic cluster crossed the configured threshold.

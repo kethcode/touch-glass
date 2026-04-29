@@ -61,9 +61,8 @@ Configure Touch Glass:
 
 ```bash
 cp .env.example .env
-cp topics.example.json topics.json
 nano .env
-nano topics.json
+nano topics/index.json
 ```
 
 Minimum `.env` values:
@@ -76,7 +75,7 @@ EMBEDDING_PROVIDER=llamacpp
 EMBEDDING_BASE_URL=http://127.0.0.1:8080/v1
 EMBEDDING_MODEL=Qwen3-Embedding-0.6B-Q8_0
 EMBEDDING_DIMS=native
-TOUCH_GLASS_TOPICS_CONFIG=topics.json
+TOUCH_GLASS_TOPICS_CONFIG=topics/index.json
 ```
 
 Leave `RESEND_API_KEY` unset if Hermes handles delivery.
@@ -342,7 +341,7 @@ Event detector:
 ```bash
 cd /opt/touch-glass
 set -a && source .env && set +a
-.venv/bin/python -m enrichment.events detect --config topics.json --format markdown
+.venv/bin/python -m enrichment.events detect --config topics/index.json --format markdown
 ```
 
 Expected early output is often `[SILENT]` until enough matching posts exist.

@@ -17,7 +17,7 @@ The script:
 Relevant `.env` values:
 
 ```bash
-TOUCH_GLASS_TOPICS_CONFIG=topics.json
+TOUCH_GLASS_TOPICS_CONFIG=topics/index.json
 TOUCH_GLASS_HERMES_PROMPT=prompts/hermes_commentary.md
 TOUCH_GLASS_HERMES_MARK_DELIVERED=true
 ```
@@ -44,5 +44,5 @@ Hermes cron shape for later record keeping:
 /cron add "every 15m" "Run `/home/lain/touch-glass/scripts/hermes_event_briefing.sh`. If the output is [SILENT], respond exactly [SILENT]. Otherwise follow the instructions in the output and send the briefing to Telegram."
 ```
 
-Do not add the cron until `topics.json` has been tuned and manual script output
+Do not add the cron until `topics/index.json` and imported topic files have been tuned and manual script output
 looks useful.

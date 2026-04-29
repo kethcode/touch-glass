@@ -1,0 +1,24 @@
+{
+  "topics": [
+    {
+      "id": "peptide_research",
+      "name": "Peptide and GLP-1 research",
+      "priority": 4
+    },
+    {
+      "id": "longevity_research",
+      "name": "Longevity research",
+      "priority": 4
+    },
+    {
+      "id": "mycology",
+      "name": "Psilocybin therapy and mycology policy",
+      "priority": 3
+    },
+    {
+      "id": "combat_sports",
+      "name": "Combat sports safety and amateur fight prep",
+      "priority": 2
+    }
+  ]
+}

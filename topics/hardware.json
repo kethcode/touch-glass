@@ -1,0 +1,24 @@
+{
+  "topics": [
+    {
+      "id": "gpu_market",
+      "name": "GPU market and availability",
+      "priority": 5
+    },
+    {
+      "id": "gpu_silicon_announcements",
+      "name": "GPU silicon, drivers, CUDA, and ROCm",
+      "priority": 5
+    },
+    {
+      "id": "workstation_silicon",
+      "name": "Workstation CPU and platform silicon",
+      "priority": 5
+    },
+    {
+      "id": "storage_tech",
+      "name": "Storage and persistent memory tech",
+      "priority": 4
+    }
+  ]
+}
