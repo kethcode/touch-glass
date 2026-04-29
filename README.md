@@ -216,6 +216,63 @@ Every 10 minutes:
 | Embeddings | Every 4th cycle | Generate search embeddings |
 | Optional email digest | Daily (7am) | Generate top tweets/links; sends email only if Resend is configured |
 
+## Operations
+
+### Twitter-only server
+
+On the current Ubuntu server deployment, Touch Glass can run as user-level
+systemd services under the `lain` account:
+
+```bash
+systemctl --user status touch-glass-xvfb touch-glass-chrome touch-glass-api touch-glass-monitor --no-pager
+systemctl --user restart touch-glass-monitor
+journalctl --user -u touch-glass-monitor -f
+```
+
+Make sure lingering is enabled so the user services survive logout and reboot:
+
+```bash
+sudo loginctl enable-linger lain
+loginctl show-user lain -p Linger
+```
+
+For `.env` changes affecting scraping, restart the monitor:
+
+```bash
+systemctl --user restart touch-glass-monitor
+```
+
+For API password or API server changes, restart the API:
+
+```bash
+systemctl --user restart touch-glass-api
+```
+
+For browser/session changes, restart Chrome CDP:
+
+```bash
+systemctl --user restart touch-glass-chrome
+curl -s http://127.0.0.1:9222/json/version | python3 -m json.tool
+```
+
+### Topic edits
+
+Edit the active topic configuration:
+
+```bash
+nano topics.json
+```
+
+Topic edits do not require restarting the monitor. The event detector reads the
+config file each time it runs. Test the current config with:
+
+```bash
+set -a && source .env && set +a
+.venv/bin/python -m enrichment.events detect --config topics.json --format markdown
+```
+
+If the output is `[SILENT]`, no topic cluster crossed the configured threshold.
+
 ## Database
 
 SQLite with:

@@ -19,6 +19,7 @@ Runs indefinitely until killed.
 
 import sys
 import os
+import random
 import time
 import traceback
 from datetime import datetime, timezone
@@ -32,6 +33,34 @@ from db.schema import init_db, get_db
 def log(msg: str):
     ts = datetime.now().strftime("%H:%M:%S")
     print(f"[{ts}] {msg}", flush=True)
+
+
+def env_bool(name: str, default: bool = True) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() not in {"0", "false", "no", "off", ""}
+
+
+def env_int(name: str, default: int, minimum: int | None = None) -> int:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        log(f"Invalid {name}={raw!r}; using {default}")
+        return default
+    if minimum is not None:
+        value = max(minimum, value)
+    return value
+
+
+def sleep_between(base_seconds: float, jitter_seconds: float = 0):
+    delay = base_seconds
+    if jitter_seconds > 0:
+        delay += random.uniform(0, jitter_seconds)
+    time.sleep(delay)
 
 
 def run_task(name: str, fn, **kwargs) -> dict | None:
@@ -71,6 +100,14 @@ def main():
     from scrapers.telegram import scrape_telegram_groups
     from enrichment.links import enrich_pending_links
 
+    enable_timeline = env_bool("TOUCH_GLASS_ENABLE_TIMELINE", True)
+    enable_bookmarks = env_bool("TOUCH_GLASS_ENABLE_BOOKMARKS", True)
+    enable_own_tweets = env_bool("TOUCH_GLASS_ENABLE_OWN_TWEETS", True)
+    enable_followers = env_bool("TOUCH_GLASS_ENABLE_FOLLOWERS", True)
+    enable_linkedin = env_bool("TOUCH_GLASS_ENABLE_LINKEDIN", True)
+    enable_telegram = env_bool("TOUCH_GLASS_ENABLE_TELEGRAM", True)
+    enable_digest = env_bool("TOUCH_GLASS_ENABLE_DIGEST", True)
+
     # Optional: embeddings (OpenAI or local llama.cpp-compatible server)
     embed_available = False
     try:
@@ -97,10 +134,26 @@ def main():
     last_digest_date = None
 
     cycle = 0
-    cycle_interval = 600  # 10 minutes between full cycles
+    cycle_interval = env_int("TOUCH_GLASS_CYCLE_SECONDS", 600, minimum=60)
+    cycle_jitter = env_int("TOUCH_GLASS_CYCLE_JITTER_SECONDS", 180, minimum=0)
+    task_jitter = env_int("TOUCH_GLASS_TASK_JITTER_SECONDS", 7, minimum=0)
 
-    log(f"Monitor started. Cycle interval: {cycle_interval}s")
-    log("Scraping: timeline, bookmarks, own tweets, followers, following, LinkedIn, links")
+    log(f"Monitor started. Cycle interval: {cycle_interval}s (+0-{cycle_jitter}s jitter)")
+    enabled = []
+    if enable_timeline:
+        enabled.append("timeline")
+    if enable_bookmarks:
+        enabled.append("bookmarks")
+    if enable_own_tweets:
+        enabled.append("own tweets")
+    if enable_followers:
+        enabled.append("followers/following")
+    if enable_linkedin:
+        enabled.append("LinkedIn")
+    if enable_telegram:
+        enabled.append("Telegram")
+    enabled.append("links")
+    log("Scraping: " + ", ".join(enabled))
     log("Press Ctrl+C to stop")
     print("=" * 60, flush=True)
 
@@ -112,47 +165,49 @@ def main():
         # --- Twitter ---
 
         # Timeline: every cycle (5 pages = ~50 tweets)
-        run_task("twitter_timeline", scrape_timeline, pages=5)
-        time.sleep(3)
+        if enable_timeline:
+            run_task("twitter_timeline", scrape_timeline, pages=5)
+            sleep_between(3, task_jitter)
 
         # Bookmarks: every cycle (8 pages deep)
-        run_task("twitter_bookmarks", scrape_bookmarks, pages=8)
-        time.sleep(3)
+        if enable_bookmarks:
+            run_task("twitter_bookmarks", scrape_bookmarks, pages=8)
+            sleep_between(3, task_jitter)
 
         # Own tweets: every 3rd cycle
-        if cycle % 3 == 0:
+        if enable_own_tweets and cycle % 3 == 0:
             run_task("twitter_own", scrape_own_tweets, pages=5)
-            time.sleep(3)
+            sleep_between(3, task_jitter)
 
         # Followers: every 6th cycle (deep scroll)
-        if cycle % 6 == 1:
+        if enable_followers and cycle % 6 == 1:
             run_task("twitter_followers", scrape_followers, max_scrolls=80)
-            time.sleep(5)
+            sleep_between(5, task_jitter)
 
         # Following: every 6th cycle (offset by 3)
-        if cycle % 6 == 4:
+        if enable_followers and cycle % 6 == 4:
             run_task("twitter_following", scrape_following, max_scrolls=80)
-            time.sleep(5)
+            sleep_between(5, task_jitter)
             run_task("detect_mutuals", detect_mutuals)
 
         # --- LinkedIn ---
 
         # LinkedIn feed: every 2nd cycle
-        if cycle % 2 == 0:
+        if enable_linkedin and cycle % 2 == 0:
             run_task("linkedin_feed", scrape_linkedin_feed, pages=5)
-            time.sleep(3)
+            sleep_between(3, task_jitter)
 
         # LinkedIn saved: every 3rd cycle
-        if cycle % 3 == 0:
+        if enable_linkedin and cycle % 3 == 0:
             run_task("linkedin_saved", scrape_linkedin_saved, pages=5)
-            time.sleep(3)
+            sleep_between(3, task_jitter)
 
         # --- Telegram ---
 
         # Telegram groups: every 3rd cycle (~30 min), all groups
-        if cycle % 3 == 0:
+        if enable_telegram and cycle % 3 == 0:
             run_task("telegram_groups", scrape_telegram_groups, max_groups=200, scroll_pages=3)
-            time.sleep(3)
+            sleep_between(3, task_jitter)
 
         # --- Enrichment ---
 
@@ -168,7 +223,7 @@ def main():
         # --- Daily Digest (send once per day, around 7am or on first cycle) ---
         today = datetime.now().strftime("%Y-%m-%d")
         hour = datetime.now().hour
-        if last_digest_date != today and (hour >= 7 or cycle == 1):
+        if enable_digest and last_digest_date != today and (hour >= 7 or cycle == 1):
             run_task("daily_digest", send_digest)
             last_digest_date = today
 
@@ -190,7 +245,9 @@ def main():
 
         # Sleep until next cycle
         elapsed = time.time() - cycle_start
-        sleep_time = max(60, cycle_interval - elapsed)  # At least 60s between cycles
+        sleep_time = max(60, cycle_interval - elapsed)
+        if cycle_jitter > 0:
+            sleep_time += random.uniform(0, cycle_jitter)
         log(f"Sleeping {int(sleep_time)}s until next cycle...")
         time.sleep(sleep_time)
 
