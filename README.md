@@ -149,10 +149,23 @@ If no event crosses threshold, the command prints `[SILENT]`. This is intended
 for Hermes cron jobs, which suppress delivery when a successful run starts with
 that marker.
 
-Example Hermes cron prompt:
+For Hermes delivery, tune the versioned commentary prompt:
+
+```bash
+nano prompts/hermes_commentary.md
+```
+
+Then test the wrapper script:
+
+```bash
+scripts/hermes_event_briefing.sh
+```
+
+See [HERMES.md](HERMES.md) for the cron handoff shape. The stable command for
+Hermes is:
 
 ```text
-/cron add "every 15m" "Run `cd /path/to/touch-glass && set -a && source .env && set +a && python -m enrichment.events detect --config topics.json --format markdown --mark-delivered`. If the output is [SILENT], respond exactly [SILENT]. Otherwise, write a concise Telegram briefing about the candidate events."
+/path/to/touch-glass/scripts/hermes_event_briefing.sh
 ```
 
 For debugging:

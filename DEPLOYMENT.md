@@ -349,15 +349,29 @@ Expected early output is often `[SILENT]` until enough matching posts exist.
 
 ## 7. Hermes Cron Handoff
 
-Once Hermes gateway is already configured for Telegram/Slack, create a cron job from the Hermes chat:
+Once Hermes gateway is already configured for Telegram/Slack, tune the prompt:
+
+```bash
+cd /opt/touch-glass
+nano prompts/hermes_commentary.md
+```
+
+Test the wrapper:
+
+```bash
+cd /opt/touch-glass
+scripts/hermes_event_briefing.sh
+```
+
+If manual output looks useful, create a cron job from the Hermes chat:
 
 ```text
-/cron add "every 15m" "Run `cd /opt/touch-glass && set -a && source .env && set +a && .venv/bin/python -m enrichment.events detect --config topics.json --format markdown --mark-delivered`. If the output is [SILENT], respond exactly [SILENT]. Otherwise, write a concise Telegram briefing about the candidate events."
+/cron add "every 15m" "Run `/opt/touch-glass/scripts/hermes_event_briefing.sh`. If the output is [SILENT], respond exactly [SILENT]. Otherwise follow the instructions in the output and send the briefing to Telegram."
 ```
 
 Notes:
-- The detector marks delivered events only after printing them when `--mark-delivered` is present.
-- If Hermes fails after reading output but before delivery, you may miss one alert. For first pass this is acceptable. If it becomes a problem, remove `--mark-delivered` and mark delivered from a separate acknowledged path.
+- The wrapper marks delivered events when `TOUCH_GLASS_HERMES_MARK_DELIVERED=true`.
+- If Hermes fails after reading output but before delivery, you may miss one alert. For first pass this is acceptable. If it becomes a problem, set `TOUCH_GLASS_HERMES_MARK_DELIVERED=false` and mark delivered from a separate acknowledged path.
 - Keep Touch Glass bound to `127.0.0.1` unless you intentionally expose it behind a tunnel or reverse proxy.
 
 ## 8. Common Troubleshooting

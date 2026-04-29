@@ -10,3 +10,4 @@ __pycache__/
 *.log
 node_modules/
 topics.json
+prompts/*.local.md
