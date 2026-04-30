@@ -395,7 +395,7 @@ def detect_events(config_path: str | None = None, window_minutes: int | None = N
     if not topics:
         return []
 
-    max_window = max(int(topic.get("window_minutes") or window_minutes or defaults.get("window_minutes", 120)) for topic in topics)
+    max_window = max(int(window_minutes or topic.get("window_minutes") or defaults.get("window_minutes", 120)) for topic in topics)
     max_items = int(defaults.get("max_items", 500))
     now = utc_now()
     conn = get_db()
@@ -407,7 +407,7 @@ def detect_events(config_path: str | None = None, window_minutes: int | None = N
             topic_id = str(topic["id"])
             topic_name = str(topic.get("name") or topic_id)
             priority = int(topic.get("priority") or 0)
-            topic_window = int(topic.get("window_minutes") or window_minutes or defaults.get("window_minutes", 120))
+            topic_window = int(window_minutes or topic.get("window_minutes") or defaults.get("window_minutes", 120))
             min_items = int(topic.get("min_items") or defaults.get("min_items", 2))
             min_score = float(topic.get("min_score") or defaults.get("min_score", 8))
             since = now - timedelta(minutes=topic_window)

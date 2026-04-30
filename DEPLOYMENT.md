@@ -69,6 +69,8 @@ Minimum `.env` values:
 
 ```bash
 BRAIN_PASSWORD=replace-with-long-password
+# Optional: set this before first run if the DB should live off the repo path.
+# BRAIN_DB=/opt/touch-glass/brain.db
 CDP_URL=http://127.0.0.1:9222
 TWITTER_USERNAME=your_username
 EMBEDDING_PROVIDER=llamacpp
@@ -76,6 +78,13 @@ EMBEDDING_BASE_URL=http://127.0.0.1:8080/v1
 EMBEDDING_MODEL=Qwen3-Embedding-0.6B-Q8_0
 EMBEDDING_DIMS=native
 TOUCH_GLASS_TOPICS_CONFIG=topics/index.json
+TOUCH_GLASS_HERMES_CONSOLIDATION_PROMPT=prompts/hermes_consolidation.md
+TOUCH_GLASS_HERMES_COMMENTARY_PROMPT=prompts/hermes_commentary.md
+TOUCH_GLASS_HERMES_MARK_DELIVERED=true
+TOUCH_GLASS_HERMES_LIMIT=25
+TOUCH_GLASS_HERMES_WINDOW_MINUTES=120
+# For uv-managed Hermes wrapper runs:
+# TOUCH_GLASS_PYTHON_CMD="uv run python"
 ```
 
 Leave `RESEND_API_KEY` unset if Hermes handles delivery.

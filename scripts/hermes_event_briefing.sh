@@ -6,12 +6,44 @@ ROOT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 
 cd "${ROOT_DIR}"
 
+env_override_names=(
+  BRAIN_DB
+  BRAIN_PASSWORD
+  TOUCH_GLASS_PYTHON
+  TOUCH_GLASS_PYTHON_CMD
+  TOUCH_GLASS_TOPICS_CONFIG
+  TOUCH_GLASS_HERMES_CONSOLIDATION_PROMPT
+  TOUCH_GLASS_HERMES_COMMENTARY_PROMPT
+  TOUCH_GLASS_HERMES_PROMPT
+  TOUCH_GLASS_HERMES_MARK_DELIVERED
+  TOUCH_GLASS_HERMES_LIMIT
+  TOUCH_GLASS_HERMES_WINDOW_MINUTES
+)
+env_override_set=()
+env_override_values=()
+
+for name in "${env_override_names[@]}"; do
+  if value="$(printenv "${name}")"; then
+    env_override_set+=("1")
+    env_override_values+=("${value}")
+  else
+    env_override_set+=("0")
+    env_override_values+=("")
+  fi
+done
+
 if [[ -f ".env" ]]; then
   set -a
   # shellcheck disable=SC1091
   source ".env"
   set +a
 fi
+
+for i in "${!env_override_names[@]}"; do
+  if [[ "${env_override_set[$i]}" == "1" ]]; then
+    export "${env_override_names[$i]}=${env_override_values[$i]}"
+  fi
+done
 
 PYTHON_CMD_RAW="${TOUCH_GLASS_PYTHON_CMD:-}"
 PYTHON_BIN="${TOUCH_GLASS_PYTHON:-${ROOT_DIR}/.venv/bin/python}"
@@ -20,7 +52,7 @@ CONSOLIDATION_PROMPT_FILE="${TOUCH_GLASS_HERMES_CONSOLIDATION_PROMPT:-prompts/he
 COMMENTARY_PROMPT_FILE="${TOUCH_GLASS_HERMES_COMMENTARY_PROMPT:-${TOUCH_GLASS_HERMES_PROMPT:-prompts/hermes_commentary.md}}"
 MARK_DELIVERED="${TOUCH_GLASS_HERMES_MARK_DELIVERED:-true}"
 EVENT_LIMIT="${TOUCH_GLASS_HERMES_LIMIT:-25}"
-WINDOW_MINUTES="${TOUCH_GLASS_HERMES_WINDOW_MINUTES:-}"
+WINDOW_MINUTES="${TOUCH_GLASS_HERMES_WINDOW_MINUTES:-120}"
 
 if [[ -n "${PYTHON_CMD_RAW}" ]]; then
   read -r -a python_cmd <<< "${PYTHON_CMD_RAW}"

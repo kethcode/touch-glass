@@ -10,6 +10,7 @@ Touch Glass:
 The script:
 
 - loads `.env` from the repo root
+- treats explicit environment variables on the command as overrides for `.env`
 - runs `enrichment.events detect`
 - prints exactly `[SILENT]` when no event crosses threshold
 - otherwise prints the consolidation prompt, commentary prompt, and detector output
@@ -22,6 +23,7 @@ TOUCH_GLASS_HERMES_CONSOLIDATION_PROMPT=prompts/hermes_consolidation.md
 TOUCH_GLASS_HERMES_COMMENTARY_PROMPT=prompts/hermes_commentary.md
 TOUCH_GLASS_HERMES_MARK_DELIVERED=true
 TOUCH_GLASS_HERMES_LIMIT=25
+TOUCH_GLASS_HERMES_WINDOW_MINUTES=120
 ```
 
 Set `TOUCH_GLASS_HERMES_MARK_DELIVERED=false` while tuning if you want repeated
@@ -36,14 +38,23 @@ If the deployment is managed through `uv` instead of a `.venv`, set:
 TOUCH_GLASS_PYTHON_CMD="uv run python"
 ```
 
-For one-off backfills while tuning, optionally set `TOUCH_GLASS_HERMES_WINDOW_MINUTES`
-to widen the detector window.
+The wrapper defaults to a 120-minute detector window so routine runs do not
+inherit long per-topic windows meant for low-cadence watch topics. For one-off
+backfills while tuning, set `TOUCH_GLASS_HERMES_WINDOW_MINUTES` higher for that
+run.
 
 Manual test:
 
 ```bash
 cd /home/lain/touch-glass
 scripts/hermes_event_briefing.sh
+```
+
+One-off wider backfill:
+
+```bash
+cd /home/lain/touch-glass
+TOUCH_GLASS_HERMES_MARK_DELIVERED=false TOUCH_GLASS_HERMES_WINDOW_MINUTES=1440 scripts/hermes_event_briefing.sh
 ```
 
 Expected no-signal output:
