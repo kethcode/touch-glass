@@ -169,6 +169,8 @@ scripts/hermes_event_briefing.sh
 
 Routine Hermes runs use a 120-minute detector window by default. For a one-off
 catch-up or tuning pass, set `TOUCH_GLASS_HERMES_WINDOW_MINUTES` on that run.
+If routine runs are still too chatty, set `TOUCH_GLASS_HERMES_MIN_PRIORITY`
+before reaching for a score gate; broad topics can score high by volume.
 
 See [HERMES.md](HERMES.md) for the cron handoff shape. The stable command for
 Hermes is:

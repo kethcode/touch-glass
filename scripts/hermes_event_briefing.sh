@@ -18,6 +18,8 @@ env_override_names=(
   TOUCH_GLASS_HERMES_MARK_DELIVERED
   TOUCH_GLASS_HERMES_LIMIT
   TOUCH_GLASS_HERMES_WINDOW_MINUTES
+  TOUCH_GLASS_HERMES_MIN_SCORE
+  TOUCH_GLASS_HERMES_MIN_PRIORITY
 )
 env_override_set=()
 env_override_values=()
@@ -53,6 +55,8 @@ COMMENTARY_PROMPT_FILE="${TOUCH_GLASS_HERMES_COMMENTARY_PROMPT:-${TOUCH_GLASS_HE
 MARK_DELIVERED="${TOUCH_GLASS_HERMES_MARK_DELIVERED:-true}"
 EVENT_LIMIT="${TOUCH_GLASS_HERMES_LIMIT:-25}"
 WINDOW_MINUTES="${TOUCH_GLASS_HERMES_WINDOW_MINUTES:-120}"
+MIN_SCORE="${TOUCH_GLASS_HERMES_MIN_SCORE:-}"
+MIN_PRIORITY="${TOUCH_GLASS_HERMES_MIN_PRIORITY:-}"
 
 if [[ -n "${PYTHON_CMD_RAW}" ]]; then
   read -r -a python_cmd <<< "${PYTHON_CMD_RAW}"
@@ -75,6 +79,12 @@ detect_args=(
 
 if [[ -n "${WINDOW_MINUTES}" ]]; then
   detect_args+=(--window-minutes "${WINDOW_MINUTES}")
+fi
+if [[ -n "${MIN_SCORE}" ]]; then
+  detect_args+=(--min-score "${MIN_SCORE}")
+fi
+if [[ -n "${MIN_PRIORITY}" ]]; then
+  detect_args+=(--min-priority "${MIN_PRIORITY}")
 fi
 
 case "${MARK_DELIVERED}" in

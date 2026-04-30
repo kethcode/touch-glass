@@ -388,7 +388,13 @@ def score_event(matches: list[dict], topic: dict, defaults: dict, author_counts:
     return round(score, 2), components
 
 
-def detect_events(config_path: str | None = None, window_minutes: int | None = None, persist: bool = True) -> list[dict]:
+def detect_events(
+    config_path: str | None = None,
+    window_minutes: int | None = None,
+    persist: bool = True,
+    global_min_score: float | None = None,
+    min_priority: int | None = None,
+) -> list[dict]:
     config = load_config(config_path)
     defaults = config.get("defaults", {})
     topics = config.get("topics", [])
@@ -409,7 +415,7 @@ def detect_events(config_path: str | None = None, window_minutes: int | None = N
             priority = int(topic.get("priority") or 0)
             topic_window = int(window_minutes or topic.get("window_minutes") or defaults.get("window_minutes", 120))
             min_items = int(topic.get("min_items") or defaults.get("min_items", 2))
-            min_score = float(topic.get("min_score") or defaults.get("min_score", 8))
+            topic_min_score = float(topic.get("min_score") or defaults.get("min_score", 8))
             since = now - timedelta(minutes=topic_window)
 
             matches = []
@@ -448,7 +454,11 @@ def detect_events(config_path: str | None = None, window_minutes: int | None = N
             )
             score, score_components = score_event(matches, topic, defaults, author_counts, domain_counts)
 
-            if score < min_score:
+            if score < topic_min_score:
+                continue
+            if global_min_score is not None and score < global_min_score:
+                continue
+            if min_priority is not None and priority < min_priority:
                 continue
 
             event_id = _build_event_id(topic_id, matches)
@@ -537,7 +547,13 @@ def detect_events(config_path: str | None = None, window_minutes: int | None = N
     return events
 
 
-def list_events(status: str = "new", limit: int = 10, event_ids: list[str] | None = None) -> list[dict]:
+def list_events(
+    status: str = "new",
+    limit: int = 10,
+    event_ids: list[str] | None = None,
+    min_score: float | None = None,
+    min_priority: int | None = None,
+) -> list[dict]:
     if event_ids is not None and not event_ids:
         return []
 
@@ -549,12 +565,20 @@ def list_events(status: str = "new", limit: int = 10, event_ids: list[str] | Non
             placeholders = ",".join("?" for _ in event_ids)
             event_filter = f" AND id IN ({placeholders})"
             params.extend(event_ids)
+        threshold_filter = ""
+        if min_score is not None:
+            threshold_filter += " AND score >= ?"
+            params.append(min_score)
+        if min_priority is not None:
+            threshold_filter += " AND COALESCE(CAST(json_extract(metadata, '$.priority') AS INTEGER), 0) >= ?"
+            params.append(min_priority)
         params.append(limit)
         rows = conn.execute(
             f"""
             SELECT * FROM detected_events
             WHERE (? = 'all' OR status = ?)
                 {event_filter}
+                {threshold_filter}
             ORDER BY COALESCE(CAST(json_extract(metadata, '$.priority') AS INTEGER), 0) DESC,
                 score DESC, window_end DESC
             LIMIT ?
@@ -639,12 +663,16 @@ def main(argv: list[str] | None = None) -> int:
     detect = sub.add_parser("detect", help="Detect events and persist them.")
     detect.add_argument("--config", help="Path to topics JSON config.")
     detect.add_argument("--window-minutes", type=int, help="Override topic windows.")
+    detect.add_argument("--min-score", type=float, help="Suppress events below this final score.")
+    detect.add_argument("--min-priority", type=int, help="Suppress events below this topic priority.")
     detect.add_argument("--format", choices=["markdown", "json"], default="markdown")
     detect.add_argument("--limit", type=int, default=10)
     detect.add_argument("--mark-delivered", action="store_true")
 
     list_cmd = sub.add_parser("list", help="List persisted events.")
     list_cmd.add_argument("--status", default="new", choices=["new", "delivered", "superseded", "all"])
+    list_cmd.add_argument("--min-score", type=float, help="Suppress events below this final score.")
+    list_cmd.add_argument("--min-priority", type=int, help="Suppress events below this topic priority.")
     list_cmd.add_argument("--format", choices=["markdown", "json"], default="markdown")
     list_cmd.add_argument("--limit", type=int, default=10)
     list_cmd.add_argument("--mark-delivered", action="store_true")
@@ -656,11 +684,19 @@ def main(argv: list[str] | None = None) -> int:
     init_db(verbose=False)
 
     if args.cmd == "detect":
-        detected = detect_events(config_path=args.config, window_minutes=args.window_minutes, persist=True)
+        detected = detect_events(
+            config_path=args.config,
+            window_minutes=args.window_minutes,
+            persist=True,
+            global_min_score=args.min_score,
+            min_priority=args.min_priority,
+        )
         events = list_events(
             status="new",
             limit=args.limit,
             event_ids=[event["id"] for event in detected],
+            min_score=args.min_score,
+            min_priority=args.min_priority,
         )
         if args.format == "json":
             print(json.dumps({"count": len(events), "events": events}, indent=2))
@@ -671,7 +707,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.cmd == "list":
-        events = list_events(status=args.status, limit=args.limit)
+        events = list_events(
+            status=args.status,
+            limit=args.limit,
+            min_score=args.min_score,
+            min_priority=args.min_priority,
+        )
         if args.format == "json":
             print(json.dumps({"count": len(events), "events": events}, indent=2))
         else:

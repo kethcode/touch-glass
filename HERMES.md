@@ -24,6 +24,8 @@ TOUCH_GLASS_HERMES_COMMENTARY_PROMPT=prompts/hermes_commentary.md
 TOUCH_GLASS_HERMES_MARK_DELIVERED=true
 TOUCH_GLASS_HERMES_LIMIT=25
 TOUCH_GLASS_HERMES_WINDOW_MINUTES=120
+# TOUCH_GLASS_HERMES_MIN_PRIORITY=7
+# TOUCH_GLASS_HERMES_MIN_SCORE=20
 ```
 
 Set `TOUCH_GLASS_HERMES_MARK_DELIVERED=false` while tuning if you want repeated
@@ -42,6 +44,11 @@ The wrapper defaults to a 120-minute detector window so routine runs do not
 inherit long per-topic windows meant for low-cadence watch topics. For one-off
 backfills while tuning, set `TOUCH_GLASS_HERMES_WINDOW_MINUTES` higher for that
 run.
+
+Optional handoff gates can suppress lower-signal runs before they reach Hermes.
+`TOUCH_GLASS_HERMES_MIN_PRIORITY` is usually the better first lever because broad
+topics can score high by volume. `TOUCH_GLASS_HERMES_MIN_SCORE` is useful as a
+second pass after topic priorities feel right.
 
 Manual test:
 
