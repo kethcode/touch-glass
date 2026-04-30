@@ -20,10 +20,20 @@ Relevant `.env` values:
 TOUCH_GLASS_TOPICS_CONFIG=topics/index.json
 TOUCH_GLASS_HERMES_PROMPT=prompts/hermes_commentary.md
 TOUCH_GLASS_HERMES_MARK_DELIVERED=true
+TOUCH_GLASS_HERMES_LIMIT=10
 ```
 
 Set `TOUCH_GLASS_HERMES_MARK_DELIVERED=false` while tuning if you want repeated
 manual runs to show the same candidate events.
+
+If the deployment is managed through `uv` instead of a `.venv`, set:
+
+```bash
+TOUCH_GLASS_PYTHON_CMD="uv run python"
+```
+
+For one-off backfills while tuning, optionally set `TOUCH_GLASS_HERMES_WINDOW_MINUTES`
+to widen the detector window.
 
 Manual test:
 
