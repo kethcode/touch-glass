@@ -3,7 +3,39 @@
     {
       "id": "your_handle_mentions",
       "name": "Keth handle mentions",
-      "priority": 8
+      "priority": 8,
+      "window_minutes": 1440,
+      "min_items": 1,
+      "min_score": 2.5,
+      "keywords": [
+        "@kethcode",
+        "kethcode",
+        "kethic",
+        "kethic.eth"
+      ],
+      "exclude_accounts": [
+        "kethcode",
+        "kethic"
+      ],
+      "security_terms": [
+        "kethcode",
+        "kethic",
+        "kethic.eth",
+        "mention",
+        "reply",
+        "dm",
+        "tag",
+        "question",
+        "wildcat",
+        "indexed",
+        "audit",
+        "security"
+      ],
+      "meme_terms": [
+        "lol",
+        "lmao",
+        "cooked"
+      ]
     },
     {
       "id": "digital_sovereignty",
