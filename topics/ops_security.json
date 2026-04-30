@@ -1,0 +1,91 @@
+{
+  "topics": [
+    {
+      "id": "linux_ops_security",
+      "name": "Linux and self-hosted ops security",
+      "priority": 8,
+      "window_minutes": 720,
+      "min_items": 1,
+      "min_score": 6,
+      "keywords": [
+        "copy fail",
+        "copyfail",
+        "copy.fail",
+        "cve-2026-31431",
+        "linux privilege escalation",
+        "linux local privilege escalation",
+        "local privilege escalation",
+        "local root exploit",
+        "linux root exploit",
+        "kernel privilege escalation",
+        "linux kernel vulnerability",
+        "ubuntu security notice",
+        "debian security advisory",
+        "red hat security advisory",
+        "rhel security advisory",
+        "cisa kev",
+        "known exploited vulnerabilities",
+        "container escape",
+        "runc vulnerability",
+        "openssh vulnerability",
+        "sudo vulnerability",
+        "systemd vulnerability",
+        "glibc vulnerability",
+        "critical linux vulnerability",
+        "patch your kernel",
+        "patch linux",
+        "patch ubuntu"
+      ],
+      "domains": [
+        "copy.fail",
+        "nvd.nist.gov",
+        "cve.org",
+        "cisa.gov",
+        "ubuntu.com",
+        "debian.org",
+        "redhat.com",
+        "linuxfoundation.org",
+        "kernel.org",
+        "openwall.com"
+      ],
+      "official_accounts": [
+        "cisa",
+        "ubuntu",
+        "debian",
+        "redhat",
+        "theori_io",
+        "theori",
+        "grapheneos"
+      ],
+      "official_domains": [
+        "nvd.nist.gov",
+        "cve.org",
+        "cisa.gov",
+        "ubuntu.com",
+        "debian.org",
+        "redhat.com",
+        "kernel.org",
+        "openwall.com"
+      ],
+      "security_terms": [
+        "cve",
+        "vulnerability",
+        "exploit",
+        "privilege escalation",
+        "local privilege escalation",
+        "root",
+        "kernel",
+        "patch",
+        "mitigation",
+        "advisory",
+        "kev",
+        "actively exploited"
+      ],
+      "meme_terms": [
+        "lol",
+        "lmao",
+        "cooked"
+      ]
+    }
+  ]
+}

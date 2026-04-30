@@ -151,11 +151,15 @@ If no event crosses threshold, the command prints `[SILENT]`. This is intended
 for Hermes cron jobs, which suppress delivery when a successful run starts with
 that marker.
 
-For Hermes delivery, tune the versioned commentary prompt:
+For Hermes delivery, tune the versioned prompt files:
 
 ```bash
+nano prompts/hermes_consolidation.md
 nano prompts/hermes_commentary.md
 ```
+
+The consolidation prompt handles duplicate detector topics and evidence merging.
+The commentary prompt controls the final digest voice.
 
 Then test the wrapper script:
 

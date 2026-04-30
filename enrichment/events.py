@@ -221,6 +221,13 @@ def _topic_terms(topic: dict, key: str) -> list[str]:
     return [str(term).strip().lower() for term in topic.get(key, []) if str(term).strip()]
 
 
+def _term_in_text(haystack: str, term: str) -> bool:
+    if re.fullmatch(r"[a-z0-9_]+", term):
+        pattern = rf"(?<![a-z0-9_]){re.escape(term)}(?![a-z0-9_])"
+        return re.search(pattern, haystack) is not None
+    return term in haystack
+
+
 def score_item_for_topic(item: dict, topic: dict) -> tuple[float, dict]:
     text_parts = [
         item.get("text") or "",
@@ -254,7 +261,7 @@ def score_item_for_topic(item: dict, topic: dict) -> tuple[float, dict]:
     if author and author in exclude_accounts:
         return 0, {}
 
-    matched_keywords = [term for term in keywords if term in haystack]
+    matched_keywords = [term for term in keywords if _term_in_text(haystack, term)]
     matched_domains = [
         domain for domain in domains
         if any(domain in link_domain for link_domain in link_domains)
@@ -265,8 +272,8 @@ def score_item_for_topic(item: dict, topic: dict) -> tuple[float, dict]:
         domain for domain in official_domains
         if any(domain in link_domain for link_domain in link_domains)
     ]
-    matched_security_terms = [term for term in security_terms if term in haystack]
-    matched_meme_terms = [term for term in meme_terms if term in haystack]
+    matched_security_terms = [term for term in security_terms if _term_in_text(haystack, term)]
+    matched_meme_terms = [term for term in meme_terms if _term_in_text(haystack, term)]
 
     if not matched_keywords and not matched_domains and not matched_accounts:
         return 0, {}
@@ -322,7 +329,7 @@ def _build_summary(topic_name: str, items: list[dict], metadata: dict) -> str:
     if metadata.get("official_source_seen"):
         signals.append("official source")
     if metadata.get("security_advisory_seen"):
-        signals.append("security advisory")
+        signals.append("risk terms")
     if metadata.get("same_author_pileon"):
         signals.append("single-author pileon")
     if metadata.get("meme_only_cluster"):
@@ -487,6 +494,14 @@ def detect_events(config_path: str | None = None, window_minutes: int | None = N
                 delivered_at = existing["delivered_at"] if existing else None
                 conn.execute(
                     """
+                    UPDATE detected_events
+                    SET status='superseded'
+                    WHERE topic_id=? AND status='new' AND id<>?
+                    """,
+                    (topic_id, event_id),
+                )
+                conn.execute(
+                    """
                     INSERT OR REPLACE INTO detected_events (
                         id, topic_id, topic_name, window_start, window_end, score,
                         status, title, summary, metadata, created_at, delivered_at
@@ -522,18 +537,29 @@ def detect_events(config_path: str | None = None, window_minutes: int | None = N
     return events
 
 
-def list_events(status: str = "new", limit: int = 10) -> list[dict]:
+def list_events(status: str = "new", limit: int = 10, event_ids: list[str] | None = None) -> list[dict]:
+    if event_ids is not None and not event_ids:
+        return []
+
     conn = get_db()
     try:
+        event_filter = ""
+        params: list[object] = [status, status]
+        if event_ids is not None:
+            placeholders = ",".join("?" for _ in event_ids)
+            event_filter = f" AND id IN ({placeholders})"
+            params.extend(event_ids)
+        params.append(limit)
         rows = conn.execute(
-            """
+            f"""
             SELECT * FROM detected_events
             WHERE (? = 'all' OR status = ?)
+                {event_filter}
             ORDER BY COALESCE(CAST(json_extract(metadata, '$.priority') AS INTEGER), 0) DESC,
                 score DESC, window_end DESC
             LIMIT ?
             """,
-            (status, status, limit),
+            params,
         ).fetchall()
         events = []
         for row in rows:
@@ -618,7 +644,7 @@ def main(argv: list[str] | None = None) -> int:
     detect.add_argument("--mark-delivered", action="store_true")
 
     list_cmd = sub.add_parser("list", help="List persisted events.")
-    list_cmd.add_argument("--status", default="new", choices=["new", "delivered", "all"])
+    list_cmd.add_argument("--status", default="new", choices=["new", "delivered", "superseded", "all"])
     list_cmd.add_argument("--format", choices=["markdown", "json"], default="markdown")
     list_cmd.add_argument("--limit", type=int, default=10)
     list_cmd.add_argument("--mark-delivered", action="store_true")
@@ -630,8 +656,12 @@ def main(argv: list[str] | None = None) -> int:
     init_db(verbose=False)
 
     if args.cmd == "detect":
-        detect_events(config_path=args.config, window_minutes=args.window_minutes, persist=True)
-        events = list_events(status="new", limit=args.limit)
+        detected = detect_events(config_path=args.config, window_minutes=args.window_minutes, persist=True)
+        events = list_events(
+            status="new",
+            limit=args.limit,
+            event_ids=[event["id"] for event in detected],
+        )
         if args.format == "json":
             print(json.dumps({"count": len(events), "events": events}, indent=2))
         else:

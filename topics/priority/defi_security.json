@@ -9,20 +9,22 @@
       "min_score": 8,
       "keywords": [
         "defi exploit",
+        "defi hack",
         "protocol exploit",
+        "protocol hack",
         "smart contract exploit",
-        "exploited",
-        "hacked",
-        "hack",
+        "smart contract hack",
         "drained",
         "funds drained",
         "stolen funds",
         "loss of funds",
-        "security incident",
-        "incident report",
-        "postmortem",
-        "root cause",
-        "vulnerability",
+        "defi security incident",
+        "protocol incident report",
+        "exploit postmortem",
+        "protocol postmortem",
+        "exploit root cause",
+        "smart contract vulnerability",
+        "protocol vulnerability",
         "critical vulnerability",
         "oracle manipulation",
         "price manipulation",
@@ -37,7 +39,8 @@
         "withdrawals paused",
         "deposits paused",
         "pause the protocol",
-        "whitehat rescue"
+        "whitehat rescue",
+        "defillama.com/hacks"
       ],
       "domains": [
         "rekt.news",
@@ -48,9 +51,7 @@
         "slowmist.com",
         "immunefi.com",
         "blockaid.io",
-        "scamsniffer.io",
-        "etherscan.io",
-        "dune.com"
+        "scamsniffer.io"
       ],
       "official_accounts": [
         "peckshieldalert",
@@ -219,10 +220,7 @@
         "blockaid.io",
         "scamsniffer.io",
         "socket.dev",
-        "snyk.io",
-        "github.com",
-        "npmjs.com",
-        "pypi.org"
+        "snyk.io"
       ],
       "official_accounts": [
         "chainalysis",

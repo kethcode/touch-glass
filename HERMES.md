@@ -12,19 +12,23 @@ The script:
 - loads `.env` from the repo root
 - runs `enrichment.events detect`
 - prints exactly `[SILENT]` when no event crosses threshold
-- otherwise prints `prompts/hermes_commentary.md` followed by the detector output
+- otherwise prints the consolidation prompt, commentary prompt, and detector output
 
 Relevant `.env` values:
 
 ```bash
 TOUCH_GLASS_TOPICS_CONFIG=topics/index.json
-TOUCH_GLASS_HERMES_PROMPT=prompts/hermes_commentary.md
+TOUCH_GLASS_HERMES_CONSOLIDATION_PROMPT=prompts/hermes_consolidation.md
+TOUCH_GLASS_HERMES_COMMENTARY_PROMPT=prompts/hermes_commentary.md
 TOUCH_GLASS_HERMES_MARK_DELIVERED=true
-TOUCH_GLASS_HERMES_LIMIT=10
+TOUCH_GLASS_HERMES_LIMIT=25
 ```
 
 Set `TOUCH_GLASS_HERMES_MARK_DELIVERED=false` while tuning if you want repeated
 manual runs to show the same candidate events.
+
+`TOUCH_GLASS_HERMES_PROMPT` is still accepted as a compatibility alias for the
+commentary prompt, but new installs should use `TOUCH_GLASS_HERMES_COMMENTARY_PROMPT`.
 
 If the deployment is managed through `uv` instead of a `.venv`, set:
 

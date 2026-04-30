@@ -16,9 +16,10 @@ fi
 PYTHON_CMD_RAW="${TOUCH_GLASS_PYTHON_CMD:-}"
 PYTHON_BIN="${TOUCH_GLASS_PYTHON:-${ROOT_DIR}/.venv/bin/python}"
 TOPICS_CONFIG="${TOUCH_GLASS_TOPICS_CONFIG:-topics/index.json}"
-PROMPT_FILE="${TOUCH_GLASS_HERMES_PROMPT:-prompts/hermes_commentary.md}"
+CONSOLIDATION_PROMPT_FILE="${TOUCH_GLASS_HERMES_CONSOLIDATION_PROMPT:-prompts/hermes_consolidation.md}"
+COMMENTARY_PROMPT_FILE="${TOUCH_GLASS_HERMES_COMMENTARY_PROMPT:-${TOUCH_GLASS_HERMES_PROMPT:-prompts/hermes_commentary.md}}"
 MARK_DELIVERED="${TOUCH_GLASS_HERMES_MARK_DELIVERED:-true}"
-EVENT_LIMIT="${TOUCH_GLASS_HERMES_LIMIT:-10}"
+EVENT_LIMIT="${TOUCH_GLASS_HERMES_LIMIT:-25}"
 WINDOW_MINUTES="${TOUCH_GLASS_HERMES_WINDOW_MINUTES:-}"
 
 if [[ -n "${PYTHON_CMD_RAW}" ]]; then
@@ -57,11 +58,18 @@ if [[ "${detector_output}" == "[SILENT]" ]]; then
   exit 0
 fi
 
-if [[ ! -f "${PROMPT_FILE}" ]]; then
-  printf 'Touch Glass Hermes prompt file not found: %s\n' "${PROMPT_FILE}" >&2
+if [[ ! -f "${CONSOLIDATION_PROMPT_FILE}" ]]; then
+  printf 'Touch Glass Hermes consolidation prompt file not found: %s\n' "${CONSOLIDATION_PROMPT_FILE}" >&2
   exit 1
 fi
 
-cat "${PROMPT_FILE}"
+if [[ ! -f "${COMMENTARY_PROMPT_FILE}" ]]; then
+  printf 'Touch Glass Hermes commentary prompt file not found: %s\n' "${COMMENTARY_PROMPT_FILE}" >&2
+  exit 1
+fi
+
+cat "${CONSOLIDATION_PROMPT_FILE}"
 printf '\n\n---\n\n'
+cat "${COMMENTARY_PROMPT_FILE}"
+printf '\n\n---\n\n# Candidate Events\n\n'
 printf '%s\n' "${detector_output}"

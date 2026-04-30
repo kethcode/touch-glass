@@ -16,6 +16,7 @@
     "crypto_infra.json",
     "ai_tools.json",
     "ai_research.json",
+    "ops_security.json",
     "hardware.json",
     "health.json",
     "personal.json",
