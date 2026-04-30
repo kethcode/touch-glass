@@ -1,3 +1,6 @@
 {
+  "imports": [
+    "west_ham.json"
+  ],
   "topics": []
 }

@@ -1,0 +1,40 @@
+{
+  "topics": [
+    {
+      "id": "source_west_ham",
+      "name": "West Ham source cohort",
+      "priority": 6,
+      "window_minutes": 1440,
+      "min_items": 1,
+      "min_score": 6,
+      "accounts": [],
+      "keywords": [],
+      "security_terms": [
+        "west ham",
+        "signal",
+        "thread",
+        "launch",
+        "release",
+        "research",
+        "writeup",
+        "postmortem",
+        "incident",
+        "security",
+        "crypto",
+        "defi",
+        "ai",
+        "agent",
+        "local model",
+        "self-hosted",
+        "self hosted"
+      ],
+      "meme_terms": [
+        "lol",
+        "lmao",
+        "cooked",
+        "skill issue"
+      ],
+      "notes": "Dedicated source cohort for West Ham people. Populate accounts over time; keep separate from high-signal individual sources like 0xSero or banteg."
+    }
+  ]
+}
